@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# rca-talent
+
+Frontend for **RCA Talent** — a recruitment marketplace connecting Rwanda Coding Academy (RCA) students and graduates with employers.
+
+## Tech Stack
+
+- **Next.js 14** (App Router) + TypeScript
+- **Tailwind CSS** + shadcn/ui (Radix primitives)
+- **React Hook Form** + Zod
+- **TanStack Query** for server state
+- **Mock API layer** (swap to NestJS REST backend by setting `NEXT_PUBLIC_USE_MOCK=false`)
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo Accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All demo accounts use password: `password123`
 
-## Learn More
+| Role    | Email              |
+|---------|--------------------|
+| Student | alice@student.rw   |
+| Company | hr@techkigali.rw   |
+| Admin   | admin@rca.rw       |
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── page.tsx            # Landing page
+│   ├── for-students/       # Marketing: students
+│   ├── for-companies/      # Marketing: companies
+│   ├── login/              # Auth
+│   ├── register/
+│   ├── student/            # Student portal
+│   ├── company/            # Company portal
+│   └── admin/              # Admin dashboard
+├── components/
+│   ├── ui/                 # shadcn/ui primitives
+│   └── shared/             # AppShell, StatusBadge, DataTable, etc.
+├── hooks/                  # useNotifications, useToast
+├── lib/
+│   ├── api/                # Typed API clients (auth, students, companies, admin)
+│   ├── auth/               # Auth context (JWT session mock)
+│   ├── mock/               # In-memory mock data store
+│   ├── design-tokens.ts
+│   └── i18n.ts             # i18n-ready strings helper
+└── types/                  # TypeScript interfaces
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Portals
 
-## Deploy on Vercel
+### Public
+- Landing page with hero, how-it-works, value props
+- For Students / For Companies info pages
+- Login & Register with role toggle
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Student (`/student`)
+- Dashboard with verification banner, summary cards
+- Multi-step profile builder (bio, skills, links, mock uploads)
+- Project CRUD
+- Contact request inbox (accept/decline)
+- Settings with visibility toggle
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Company (`/company`)
+- Dashboard with request stats
+- Talent search with filters (skills, cohort, availability)
+- Student profile view + send contact request
+- Sent requests tracker
+- Company profile setup
+
+### Admin (`/admin`)
+- Platform metrics with recharts
+- Verification queue (approve/reject with reason)
+- User management (suspend/reactivate)
+- Audit log
+
+## Connecting to Real Backend
+
+Set in `.env.local`:
+
+```
+NEXT_PUBLIC_USE_MOCK=false
+NEXT_PUBLIC_API_URL=https://your-api.example.com/api
+```
+
+The API client in `src/lib/api/*.ts` will use fetch against the NestJS backend. Components remain unchanged.
+
+## Out of Scope (v1)
+
+- Payment/subscription flows
+- In-app real-time chat
+- Automated identity verification (OCR/registrar)
+- Peer/teacher endorsements
+- Detailed student analytics-over-time
+
+See `TODO` comments in code for future integration points.

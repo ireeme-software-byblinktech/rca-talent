@@ -1,0 +1,61 @@
+import { getStore, simulateDelay } from "@/lib/mock/store";
+import type { CompanyProfile, CompanyWithUser } from "@/types";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+
+export interface UpdateCompanyProfileData {
+  companyName?: string;
+  logoUrl?: string;
+  description?: string;
+  industry?: string;
+  website?: string;
+}
+
+export const companiesApi = {
+  async getProfile(userId: string): Promise<CompanyProfile | null> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      return store.companyProfiles.find((p) => p.userId === userId) ?? null;
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<CompanyProfile>(`/companies/${userId}/profile`);
+  },
+
+  async updateProfile(
+    userId: string,
+    data: UpdateCompanyProfileData
+  ): Promise<CompanyProfile> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      const idx = store.companyProfiles.findIndex((p) => p.userId === userId);
+      if (idx === -1) throw new Error("Profile not found");
+      store.companyProfiles[idx] = {
+        ...store.companyProfiles[idx],
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+      return store.companyProfiles[idx];
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<CompanyProfile>(`/companies/${userId}/profile`, {
+      method: "PATCH",
+      body: data,
+    });
+  },
+
+  async getCompanyWithUser(userId: string): Promise<CompanyWithUser | null> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      const profile = store.companyProfiles.find((p) => p.userId === userId);
+      if (!profile) return null;
+      const user = store.users.find((u) => u.id === userId);
+      if (!user) return null;
+      return { ...profile, user };
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<CompanyWithUser>(`/companies/${userId}`);
+  },
+};

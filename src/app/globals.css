@@ -2,22 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 220 20% 97%;
+    --foreground: 220 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 12%;
+    --primary: 220 48% 20%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 48% 20%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
+    --accent: 220 48% 28%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 14% 96%;
+    --ring: 220 48% 20%;
+    --radius: 0.75rem;
+    --chart-1: 220 48% 20%;
+    --chart-2: 220 60% 45%;
+    --chart-3: 200 70% 50%;
+    --chart-4: 160 60% 45%;
+    --chart-5: 35 90% 55%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply h-12 w-full rounded-xl border-0 bg-secondary px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+  }
+  .auth-card {
+    @apply w-full max-w-md rounded-2xl border border-border/60 bg-card p-8 shadow-sm;
+  }
+  .stat-card {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md;
+  }
+  .chart-card {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm;
+  }
+  .fancy-card {
+    @apply rounded-2xl border border-border/50 bg-card shadow-card transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5;
+  }
+  .skill-pill {
+    @apply inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/10;
+  }
+  .skill-pill-muted {
+    @apply bg-muted text-muted-foreground ring-border/60;
+  }
+  .sidebar-nav-active {
+    @apply bg-primary text-primary-foreground shadow-sm;
+  }
+  .landing-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .marketing-hero-glow {
+    background: radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      hsl(var(--primary) / 0.12),
+      transparent 70%
+    );
+  }
+  .glass-panel {
+    @apply rounded-2xl border border-white/60 bg-white/70 shadow-elevated backdrop-blur-md;
+  }
+  .feature-icon-wrap {
+    @apply flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-sm transition-transform duration-300 group-hover:scale-110;
+  }
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
 }
 
 @layer utilities {
