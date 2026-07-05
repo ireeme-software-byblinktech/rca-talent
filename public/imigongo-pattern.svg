@@ -1,0 +1,45 @@
+<svg width="800" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="imigongo-geometric" x="0" y="0" width="400" height="400" patternUnits="userSpaceOnUse">
+      <!-- Traditional Imigongo diamond and triangle patterns -->
+      
+      <!-- Central diamond motif -->
+      <path d="M200,50 L350,200 L200,350 L50,200 Z" fill="none" stroke="#1A2B4B" stroke-width="4" opacity="0.12"/>
+      <path d="M200,80 L320,200 L200,320 L80,200 Z" fill="none" stroke="#2A4070" stroke-width="3" opacity="0.10"/>
+      <path d="M200,110 L290,200 L200,290 L110,200 Z" fill="none" stroke="#3B5998" stroke-width="3" opacity="0.08"/>
+      
+      <!-- Triangular patterns in corners -->
+      <path d="M0,0 L80,0 L0,80 Z" fill="#1A2B4B" opacity="0.06"/>
+      <path d="M400,0 L400,80 L320,0 Z" fill="#2A4070" opacity="0.06"/>
+      <path d="M0,400 L80,400 L0,320 Z" fill="#3B5998" opacity="0.06"/>
+      <path d="M400,400 L400,320 L320,400 Z" fill="#1A2B4B" opacity="0.06"/>
+      
+      <!-- Zigzag lines -->
+      <polyline points="40,0 60,40 40,80 60,120 40,160" fill="none" stroke="#2A4070" stroke-width="3" opacity="0.10"/>
+      <polyline points="360,240 340,280 360,320 340,360 360,400" fill="none" stroke="#3B5998" stroke-width="3" opacity="0.10"/>
+      
+      <!-- Small diamond accents -->
+      <path d="M100,100 L120,120 L100,140 L80,120 Z" fill="none" stroke="#1A2B4B" stroke-width="2" opacity="0.12"/>
+      <path d="M300,100 L320,120 L300,140 L280,120 Z" fill="none" stroke="#2A4070" stroke-width="2" opacity="0.12"/>
+      <path d="M100,300 L120,320 L100,340 L80,320 Z" fill="none" stroke="#3B5998" stroke-width="2" opacity="0.12"/>
+      <path d="M300,300 L320,320 L300,340 L280,320 Z" fill="none" stroke="#1A2B4B" stroke-width="2" opacity="0.12"/>
+      
+      <!-- Cross patterns -->
+      <line x1="150" y1="40" x2="150" y2="80" stroke="#1A2B4B" stroke-width="3" opacity="0.08"/>
+      <line x1="130" y1="60" x2="170" y2="60" stroke="#1A2B4B" stroke-width="3" opacity="0.08"/>
+      
+      <line x1="250" y1="320" x2="250" y2="360" stroke="#2A4070" stroke-width="3" opacity="0.08"/>
+      <line x1="230" y1="340" x2="270" y2="340" stroke="#2A4070" stroke-width="3" opacity="0.08"/>
+      
+      <!-- Diagonal stripes -->
+      <line x1="0" y1="200" x2="50" y2="250" stroke="#3B5998" stroke-width="4" opacity="0.08"/>
+      <line x1="350" y1="150" x2="400" y2="200" stroke="#1A2B4B" stroke-width="4" opacity="0.08"/>
+      
+      <!-- Circular motifs -->
+      <circle cx="200" cy="200" r="15" fill="none" stroke="#2A4070" stroke-width="2" opacity="0.10"/>
+      <circle cx="200" cy="200" r="25" fill="none" stroke="#3B5998" stroke-width="2" opacity="0.08"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="800" fill="#FFFFFF"/>
+  <rect width="800" height="800" fill="url(#imigongo-geometric)"/>
+</svg>

@@ -214,81 +214,96 @@ export function AppShell({ children, role, title }: AppShellProps) {
       </aside>
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/60 bg-card/95 px-4 backdrop-blur-md sm:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          {title && (
-            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-          )}
-
-          <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                      {unreadCount}
-                    </span>
-                  )}
+        {/* Modern Floating Navbar */}
+        <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <nav className="flex h-14 items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-[#1A2B4B] to-[#2A4070] px-5 shadow-[0_8px_30px_rgb(26,43,75,0.20)] backdrop-blur-xl border border-white/10">
+              {/* Left: Mobile Menu + Title */}
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden text-white hover:bg-white/10 hover:text-white"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm font-semibold">Notifications</span>
-                  {unreadCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => markAllAsRead()}
-                    >
-                      Mark all read
-                    </Button>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                {notifications.length === 0 ? (
-                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No notifications yet
-                  </div>
-                ) : (
-                  notifications.slice(0, 5).map((n) => (
-                    <DropdownMenuItem
-                      key={n.id}
-                      className="flex flex-col items-start gap-1 p-3"
-                      onClick={() => markAsRead(n.id)}
-                    >
-                      <div className="flex w-full items-start justify-between gap-2">
-                        <span
-                          className={cn(
-                            "text-sm",
-                            !n.read && "font-semibold"
-                          )}
-                        >
-                          {n.title}
-                        </span>
-                        {!n.read && (
-                          <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground line-clamp-2">
-                        {n.message}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatRelativeDate(n.createdAt)}
-                      </span>
-                    </DropdownMenuItem>
-                  ))
+                {title && (
+                  <h1 className="text-base font-semibold text-white hidden sm:block truncate">
+                    {title}
+                  </h1>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </div>
+
+              {/* Right: Notifications */}
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="relative text-white hover:bg-white/10 hover:text-white h-9 w-9"
+                    >
+                      <Bell className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-[#1A2B4B]">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 mt-2">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm font-semibold">Notifications</span>
+                      {unreadCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => markAllAsRead()}
+                        >
+                          Mark all read
+                        </Button>
+                      )}
+                    </div>
+                    <DropdownMenuSeparator />
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map((n) => (
+                        <DropdownMenuItem
+                          key={n.id}
+                          className="flex flex-col items-start gap-1 p-3"
+                          onClick={() => markAsRead(n.id)}
+                        >
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <span
+                              className={cn(
+                                "text-sm",
+                                !n.read && "font-semibold"
+                              )}
+                            >
+                              {n.title}
+                            </span>
+                            {!n.read && (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground line-clamp-2">
+                            {n.message}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatRelativeDate(n.createdAt)}
+                          </span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </nav>
           </div>
         </header>
 
