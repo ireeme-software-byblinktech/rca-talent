@@ -66,112 +66,160 @@ function LoginForm() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
-      <RCALogo size="xl" className="mb-8" />
-
-      <div className="auth-card">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-foreground">
-            School Account Login
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Log In to your account
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Email"
-              className="input-field"
-              {...register("email")}
+    <div className="flex min-h-screen bg-gray-50 items-center justify-center p-4">
+      {/* Entire Card Frame */}
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex flex-col lg:flex-row">
+          {/* Left Side - Navy Blue with Imigongo Pattern */}
+          <div className="lg:w-5/12 bg-[#1A2B4B] p-8 lg:p-12 flex items-center justify-center relative min-h-[300px] lg:min-h-[600px]">
+            {/* Imigongo Pattern */}
+            <div 
+              className="absolute inset-0 opacity-15"
+              style={{
+                backgroundImage: `url('/imigongo-pattern.svg')`,
+                backgroundSize: '300px 300px',
+                backgroundPosition: 'center'
+              }}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            
+            {/* Content */}
+            <div className="relative z-10 text-center max-w-sm">
+              <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-4 lg:mb-6 shadow-2xl mx-auto">
+                <RCALogo size="md" />
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-black text-white mb-3">
+                Welcome Back
+              </h2>
+              <p className="text-white/80 leading-relaxed text-sm lg:text-base">
+                Access your RCA Talent account
+              </p>
+            </div>
           </div>
 
-          <PasswordInput
-            id="password"
-            placeholder="Password"
-            {...register("password")}
-          />
-          {errors.password && (
-            <p className="text-sm text-destructive -mt-3">
-              {errors.password.message}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={rememberMe}
-                onCheckedChange={(v) => setRememberMe(!!v)}
-              />
-              <span className="text-sm text-muted-foreground">Remember Me</span>
-            </label>
-            <button
-              type="button"
-              className="text-sm font-semibold text-primary hover:underline"
-              onClick={() =>
-                toast({
-                  title: "Password reset",
-                  description:
-                    "Password reset will be available when connected to the backend.",
-                })
-              }
-            >
-              Forgot my password
-            </button>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="h-12 w-full rounded-full text-base font-semibold"
-          >
-            {isSubmitting && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Login
-          </Button>
-        </form>
-
-        <div className="mt-6 rounded-xl bg-secondary/80 p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">
-            Quick demo (password: password123)
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {demoAccounts.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                className="rounded-full bg-card px-3 py-1 text-xs font-medium text-primary border border-border/60 hover:bg-primary hover:text-primary-foreground transition-colors"
-                onClick={() => {
-                  setValue("email", acc.email);
-                  setValue("password", "password123");
-                }}
+          {/* Right Side - White Form */}
+          <div className="lg:w-7/12 p-6 lg:p-10 flex items-center justify-center bg-white">
+            <div className="w-full max-w-md">
+              {/* Back to Home */}
+              <Link 
+                href="/" 
+                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#1A2B4B] transition-colors mb-6"
               >
-                {acc.label}
-              </button>
-            ))}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Home
+              </Link>
+
+              {/* Header */}
+              <div className="mb-6">
+                <h1 className="text-2xl lg:text-3xl font-black text-gray-900 mb-2">
+                  Login to your account
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Welcome back! Enter your details
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                    {...register("email")}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-500">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                    Password
+                  </label>
+                  <PasswordInput
+                    id="password"
+                    placeholder="Enter your Password"
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                    {...register("password")}
+                  />
+                  {errors.password && (
+                    <p className="text-xs text-red-500">{errors.password.message}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={rememberMe}
+                      onCheckedChange={(v) => setRememberMe(!!v)}
+                    />
+                    <span className="text-sm text-gray-600">Remember me</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-[#1A2B4B] hover:text-[#0F1A2E] transition-colors"
+                    onClick={() =>
+                      toast({
+                        title: "Password reset",
+                        description:
+                          "Password reset will be available when connected to the backend.",
+                      })
+                    }
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-11 w-full rounded-xl text-sm font-bold bg-[#1A2B4B] hover:bg-[#0F1A2E] transition-all mt-2"
+                >
+                  {isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Login
+                </Button>
+              </form>
+
+              <div className="mt-5 rounded-xl bg-blue-50 border border-blue-100 p-3.5">
+                <p className="text-xs font-semibold text-gray-600 mb-2">
+                  Quick demo (password: password123)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {demoAccounts.map((acc) => (
+                    <button
+                      key={acc.email}
+                      type="button"
+                      className="rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-[#1A2B4B] border border-gray-200 hover:bg-[#1A2B4B] hover:text-white transition-colors"
+                      onClick={() => {
+                        setValue("email", acc.email);
+                        setValue("password", "password123");
+                      }}
+                    >
+                      {acc.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="mt-6 text-center text-sm text-gray-600">
+                New here?{" "}
+                <Link
+                  href={`/register?role=${role}`}
+                  className="font-bold text-[#1A2B4B] hover:text-[#0F1A2E] transition-colors"
+                >
+                  Create account
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            href={`/register?role=${role}`}
-            className="font-semibold text-primary hover:underline"
-          >
-            Register
-          </Link>
-        </p>
       </div>
     </div>
   );

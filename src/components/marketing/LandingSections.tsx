@@ -1,17 +1,9 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Bookmark,
-  Briefcase,
   Building2,
   CheckCircle2,
-  Globe,
   GraduationCap,
-  MessageSquare,
-  Search,
-  Shield,
-  Sparkles,
-  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,68 +12,68 @@ import { LandingHeroVisual } from "./HeroVisuals";
 
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden border-b bg-gradient-to-b from-primary/[0.03] via-background to-background">
-      <HeroBackground />
-      <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:pb-24 lg:pt-20">
-        {/* Copy */}
-        <div className="text-center lg:text-left">
-          <div className="animate-fade-up opacity-0 mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary shadow-sm">
-            <Sparkles className="h-4 w-4" />
-            Rwanda Coding Academy · Talent Marketplace
-          </div>
+    <section className="relative overflow-hidden min-h-[550px] flex items-center">
+      {/* Imigongo Geometric Pattern Background */}
+      <div 
+        className="absolute inset-0 bg-repeat"
+        style={{
+          backgroundImage: `url('/imigongo-pattern.svg')`,
+          backgroundSize: '400px 400px'
+        }}
+      />
+      
+      {/* Gradient Overlay - lighter to show pattern more */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white/92 via-white/88 to-white/85" />
 
-          <h1 className="animate-fade-up stagger-1 opacity-0 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] leading-[1.08] text-balance">
-            Where RCA graduates meet{" "}
-            <span className="relative">
-              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                their next role
-              </span>
-            </span>
-          </h1>
+      <div className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20 text-center">
+        {/* Main Heading */}
+        <h1 className="animate-fade-up opacity-0 mx-auto max-w-4xl text-5xl font-bold tracking-tight text-[#1A2B4B] sm:text-6xl lg:text-[4.5rem] leading-[1.1]">
+          Empowering Rwanda's Tech{" "}
+          <span className="block mt-2 bg-gradient-to-r from-[#1A2B4B] via-[#3B5998] to-[#2A4070] bg-clip-text text-transparent">
+            Future Together
+          </span>
+        </h1>
 
-          <p className="animate-fade-up stagger-2 opacity-0 mx-auto mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed lg:mx-0">
-            Build a verified portfolio, get discovered by employers, and hire Rwanda&apos;s
-            best emerging developers — all on one trusted platform.
-          </p>
+        {/* Subtitle */}
+        <p className="animate-fade-up stagger-1 opacity-0 mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-gray-700 leading-relaxed font-normal">
+          Discover verified RCA talent or showcase your skills. A trusted platform connecting exceptional developers with forward-thinking companies.
+        </p>
 
-          <div className="animate-fade-up stagger-3 opacity-0 mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <Button size="lg" className="h-12 rounded-full px-8 shadow-elevated gap-2" asChild>
-              <Link href="/register?role=student">
-                <GraduationCap className="h-4 w-4" />
-                I&apos;m a Student
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 rounded-full px-8 bg-card/80 backdrop-blur-sm border-primary/20 hover:bg-primary/5"
-              asChild
-            >
-              <Link href="/register?role=company">
-                <Building2 className="h-4 w-4 mr-2" />
-                I&apos;m a Company
-              </Link>
-            </Button>
-          </div>
-
-          <div className="animate-fade-up stagger-4 opacity-0 mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 lg:justify-start">
-            {[
-              { value: "120+", label: "Students" },
-              { value: "45+", label: "Companies" },
-              { value: "95%", label: "Verified" },
-            ].map((s) => (
-              <div key={s.label} className="text-center lg:text-left">
-                <p className="text-2xl font-bold text-primary">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-              </div>
-            ))}
-          </div>
+        {/* CTA Buttons */}
+        <div className="animate-fade-up stagger-2 opacity-0 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <Button 
+            size="lg" 
+            className="h-14 rounded-full px-10 bg-[#1A2B4B] hover:bg-[#2A4070] text-white shadow-lg hover:shadow-xl transition-all duration-300 text-base font-semibold min-w-[200px]" 
+            asChild
+          >
+            <Link href="/register?role=student">
+              I'm a Student
+            </Link>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-14 rounded-full px-10 border-2 border-[#1A2B4B] text-[#1A2B4B] hover:bg-[#1A2B4B] hover:text-white transition-all duration-300 text-base font-semibold min-w-[200px]"
+            asChild
+          >
+            <Link href="/register?role=company">
+              I'm a Company
+            </Link>
+          </Button>
         </div>
 
-        {/* Visual */}
-        <div className="animate-fade-up stagger-2 opacity-0 mt-12 lg:mt-0">
-          <LandingHeroVisual />
+        {/* Stats */}
+        <div className="animate-fade-up stagger-3 opacity-0 mt-14 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+          {[
+            { value: "120+", label: "RCA Graduates" },
+            { value: "45+", label: "Partner Companies" },
+            { value: "95%", label: "Verified Profiles" },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="text-3xl font-bold text-[#1A2B4B]">{s.value}</p>
+              <p className="text-sm text-gray-600 mt-1 font-medium">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -112,73 +104,102 @@ function AudienceCard({
   const isStudent = variant === "student";
 
   return (
-    <Link href={href} className="group block h-full">
-      <article
-        className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/50 bg-card shadow-card transition-all duration-500",
-          "hover:-translate-y-1 hover:shadow-elevated hover:border-primary/25"
-        )}
-      >
-        {/* Gradient header */}
-        <div
-          className={cn(
-            "relative px-8 pb-16 pt-8 sm:px-10 sm:pt-10",
-            isStudent
-              ? "bg-gradient-to-br from-violet-600 via-primary to-accent"
-              : "bg-gradient-to-br from-slate-800 via-primary to-accent"
-          )}
-        >
-          <div className="landing-grid absolute inset-0 opacity-10" />
-          <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl transition-transform duration-500 group-hover:scale-110" />
-          <div className="relative flex items-start justify-between">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-105">
-              {icon}
-            </div>
-            {stat && (
-              <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                {stat}
-              </span>
-            )}
+    <div className="bg-white rounded-2xl shadow-2xl border border-white flex flex-col items-start relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 min-h-[640px]"
+      style={{
+        boxShadow: isStudent 
+          ? '0 25px 50px -12px rgba(0, 0, 0, 0.15)' 
+          : '0 25px 50px -12px rgba(26, 43, 75, 0.25)'
+      }}
+    >
+      {/* Header with Wave */}
+      <div className={cn(
+        "w-full p-12 pb-20 relative",
+        isStudent ? "bg-gray-200" : "bg-gradient-to-br from-[#1A2B4B] to-[#2A4070]"
+      )}>
+        {/* Wavy Bottom Edge */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]">
+          <svg 
+            viewBox="0 0 1440 120" 
+            preserveAspectRatio="none" 
+            className="relative block w-full h-[60px] fill-white"
+          >
+            <path d="M0,64L80,69.3C160,75,320,85,480,80C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z" />
+          </svg>
+        </div>
+
+        <div className="relative z-10">
+          {/* Badge */}
+          <div className={cn(
+            "px-5 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 inline-block",
+            isStudent 
+              ? "bg-white text-gray-500 border border-gray-100" 
+              : "bg-white/20 text-white"
+          )}>
+            {isStudent ? "For Students" : "For Companies"}
           </div>
-          <h3 className="relative mt-6 text-2xl font-bold text-white sm:text-[1.75rem]">
+
+          {/* Title */}
+          <h3 className={cn(
+            "text-3xl font-bold mb-2",
+            isStudent ? "text-gray-900" : "text-white"
+          )}>
             {title}
           </h3>
+          
+          {/* Stat/Pricing */}
+          {stat && (
+            <div className="flex items-baseline gap-1">
+              <span className={cn(
+                "text-3xl font-black",
+                isStudent ? "text-gray-900" : "text-white"
+              )}>
+                {stat}
+              </span>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Body — overlaps header */}
-        <div className="relative -mt-10 flex flex-1 flex-col rounded-t-3xl bg-card px-8 pb-8 pt-6 sm:px-10 sm:pb-10">
-          <p className="text-muted-foreground leading-relaxed">{description}</p>
+      {/* Body Content */}
+      <div className="p-12 pt-8 w-full flex-1 flex flex-col justify-between">
+        <div>
+          <p className="text-gray-500 text-sm mb-12 leading-relaxed">
+            {description}
+          </p>
 
-          <ul className="mt-6 flex-1 space-y-3">
-            {features.map((f) => (
-              <li key={f.text} className="flex items-start gap-3 text-sm">
-                <span
+          <div className="space-y-6 mb-12 w-full">
+            {features.map((f, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <CheckCircle2 
+                  size={24} 
                   className={cn(
-                    "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
-                    isStudent ? "bg-violet-500/10 text-violet-700" : "bg-primary/10 text-primary"
+                    "shrink-0",
+                    isStudent ? "text-gray-700" : "text-[#1A2B4B]"
                   )}
-                >
-                  {f.icon}
-                </span>
-                <span className="text-foreground/90">{f.text}</span>
-              </li>
+                  fill={isStudent ? "#374151" : "#1A2B4B"}
+                  stroke="white" 
+                  strokeWidth={1.5} 
+                />
+                <span className="text-gray-600 font-bold text-sm">{f.text}</span>
+              </div>
             ))}
-          </ul>
-
-          <div
-            className={cn(
-              "mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-all duration-300",
-              isStudent
-                ? "bg-primary text-primary-foreground group-hover:gap-3 group-hover:shadow-md"
-                : "border-2 border-primary text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:gap-3"
-            )}
-          >
-            {cta}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
         </div>
-      </article>
-    </Link>
+
+        {/* CTA Button */}
+        <Link
+          href={href}
+          className={cn(
+            "w-full py-5 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-500 shadow-xl flex items-center justify-center",
+            isStudent
+              ? "border-2 border-gray-700 text-gray-700 bg-transparent hover:bg-gray-700 hover:text-white"
+              : "bg-gradient-to-r from-[#1A2B4B] to-[#2A4070] text-white hover:brightness-110 shadow-[#1A2B4B]/20"
+          )}
+        >
+          {cta}
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -200,7 +221,7 @@ export function AudienceCardsSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-8 lg:grid-cols-2 lg:gap-10">
+        <div className="mt-14 grid gap-10 lg:grid-cols-2 max-w-4xl mx-auto items-stretch">
           <AudienceCard
             href="/for-students"
             variant="student"
@@ -209,10 +230,10 @@ export function AudienceCardsSection() {
             stat="Free forever"
             description="Build your brand, publish a portfolio, and get discovered by employers actively hiring RCA graduates."
             features={[
-              { icon: <Globe className="h-3.5 w-3.5" />, text: "Professional portfolio builder with custom URL" },
-              { icon: <Shield className="h-3.5 w-3.5" />, text: "Admin-verified badge for credibility" },
-              { icon: <MessageSquare className="h-3.5 w-3.5" />, text: "Direct messaging with recruiters" },
-              { icon: <Briefcase className="h-3.5 w-3.5" />, text: "Career analytics & project showcase" },
+              { icon: null, text: "Professional portfolio builder with custom URL" },
+              { icon: null, text: "Admin-verified badge for credibility" },
+              { icon: null, text: "Direct messaging with recruiters" },
+              { icon: null, text: "Career analytics & project showcase" },
             ]}
             cta="Explore for students"
           />
@@ -224,10 +245,10 @@ export function AudienceCardsSection() {
             stat="Verified talent"
             description="Search verified profiles, review real project work, and manage your entire hiring pipeline in one dashboard."
             features={[
-              { icon: <Search className="h-3.5 w-3.5" />, text: "Advanced skill, cohort & availability filters" },
-              { icon: <Users className="h-3.5 w-3.5" />, text: "Job postings & interview invitations" },
-              { icon: <Bookmark className="h-3.5 w-3.5" />, text: "Bookmark and track promising candidates" },
-              { icon: <CheckCircle2 className="h-3.5 w-3.5" />, text: "Portfolio-first hiring — see work before you reach out" },
+              { icon: null, text: "Advanced skill, cohort & availability filters" },
+              { icon: null, text: "Job postings & interview invitations" },
+              { icon: null, text: "Bookmark and track promising candidates" },
+              { icon: null, text: "Portfolio-first hiring — see work before you reach out" },
             ]}
             cta="Explore for companies"
           />

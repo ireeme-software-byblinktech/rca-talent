@@ -97,3 +97,30 @@
     text-wrap: balance;
   }
 }
+
+@keyframes slideRight {
+  0% {
+    transform: translateX(-100px) skewX(-25deg);
+  }
+  100% {
+    transform: translateX(400px) skewX(-25deg);
+  }
+}
+
+@keyframes slideRightFast {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(1200px);
+  }
+}
+
+@keyframes slideLeftFast {
+  0% {
+    transform: translateX(1200px);
+  }
+  100% {
+    transform: translateX(-200px);
+  }
+}

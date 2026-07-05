@@ -8,8 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { RCALogo } from "@/components/shared/RCALogo";
 import {
   Select,
   SelectContent,
@@ -17,9 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PublicFooter, PublicHeader } from "@/components/shared/PublicLayout";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { COHORT_YEARS, INDUSTRY_OPTIONS } from "@/lib/mock/data";
@@ -27,10 +24,6 @@ import { COHORT_YEARS, INDUSTRY_OPTIONS } from "@/lib/mock/data";
 const baseSchema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 const studentSchema = baseSchema.extend({
@@ -105,159 +98,256 @@ function RegisterForm() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <PublicHeader />
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Create your account</CardTitle>
-            <CardDescription>
-              Join the RCA Talent marketplace
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs
-              value={role}
-              onValueChange={(v) => setRole(v as "student" | "company")}
-              className="mb-6"
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="student">Student</TabsTrigger>
-                <TabsTrigger value="company">Company</TabsTrigger>
-              </TabsList>
-            </Tabs>
+    <div className="flex min-h-screen bg-gray-50 items-center justify-center p-4">
+      {/* Entire Card Frame */}
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex flex-col lg:flex-row">
+          {/* Left Side - Navy Blue with Imigongo Pattern */}
+          <div className="lg:w-5/12 bg-[#1A2B4B] p-8 lg:p-12 flex items-center justify-center relative min-h-[300px] lg:min-h-[600px]">
+            {/* Imigongo Pattern */}
+            <div 
+              className="absolute inset-0 opacity-15"
+              style={{
+                backgroundImage: `url('/imigongo-pattern.svg')`,
+                backgroundSize: '300px 300px',
+                backgroundPosition: 'center'
+              }}
+            />
+            
+            {/* Content */}
+            <div className="relative z-10 text-center max-w-sm">
+              <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-4 lg:mb-6 shadow-2xl mx-auto">
+                <RCALogo size="md" />
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-black text-white mb-3">
+                Join RCA Talent
+              </h2>
+              <p className="text-white/80 leading-relaxed text-sm lg:text-base">
+                Connect with Rwanda's tech ecosystem
+              </p>
+            </div>
+          </div>
 
-            {role === "student" ? (
-              <form
-                onSubmit={studentForm.handleSubmit(onSubmitStudent)}
-                className="space-y-4"
+          {/* Right Side - White Form */}
+          <div className="lg:w-7/12 p-6 lg:p-10 flex items-center justify-center bg-white">
+            <div className="w-full max-w-md">
+              {/* Back to Home */}
+              <Link 
+                href="/" 
+                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#1A2B4B] transition-colors mb-6"
               >
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full name</Label>
-                  <Input id="fullName" {...studentForm.register("fullName")} />
-                  {studentForm.formState.errors.fullName && (
-                    <p className="text-sm text-destructive">
-                      {studentForm.formState.errors.fullName.message as string}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" {...studentForm.register("email")} />
-                  {studentForm.formState.errors.email && (
-                    <p className="text-sm text-destructive">
-                      {studentForm.formState.errors.email.message as string}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Cohort year</Label>
-                  <Select
-                    value={cohortYear}
-                    onValueChange={(v) => {
-                      setCohortYear(v);
-                      studentForm.setValue("cohortYear", Number(v));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COHORT_YEARS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" {...studentForm.register("password")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm password</Label>
-                  <Input id="confirmPassword" type="password" {...studentForm.register("confirmPassword")} />
-                  {studentForm.formState.errors.confirmPassword && (
-                    <p className="text-sm text-destructive">
-                      {studentForm.formState.errors.confirmPassword.message as string}
-                    </p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create student account
-                </Button>
-              </form>
-            ) : (
-              <form
-                onSubmit={companyForm.handleSubmit(onSubmitCompany)}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company name</Label>
-                  <Input id="companyName" {...companyForm.register("companyName")} />
-                  {companyForm.formState.errors.companyName && (
-                    <p className="text-sm text-destructive">
-                      {companyForm.formState.errors.companyName.message as string}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Industry</Label>
-                  <Select
-                    value={industry}
-                    onValueChange={(v) => {
-                      setIndustry(v);
-                      companyForm.setValue("industry", v);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INDUSTRY_OPTIONS.map((ind) => (
-                        <SelectItem key={ind} value={ind}>
-                          {ind}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {companyForm.formState.errors.industry && (
-                    <p className="text-sm text-destructive">
-                      {companyForm.formState.errors.industry.message as string}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyEmail">Email</Label>
-                  <Input id="companyEmail" type="email" {...companyForm.register("email")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyPassword">Password</Label>
-                  <Input id="companyPassword" type="password" {...companyForm.register("password")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyConfirmPassword">Confirm password</Label>
-                  <Input id="companyConfirmPassword" type="password" {...companyForm.register("confirmPassword")} />
-                </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create company account
-                </Button>
-              </form>
-            )}
-
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link href="/login" className="text-brand hover:underline font-medium">
-                Log in
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Home
               </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </main>
-      <PublicFooter />
+
+              {/* Header */}
+              <div className="mb-6">
+                <h1 className="text-2xl lg:text-3xl font-black text-gray-900 mb-2">
+                  Create your account
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Join the RCA Talent marketplace
+                </p>
+              </div>
+
+              {/* Role Tabs */}
+              <Tabs
+                value={role}
+                onValueChange={(v) => setRole(v as "student" | "company")}
+                className="mb-5"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-11 bg-gray-100 rounded-xl p-1">
+                  <TabsTrigger value="student" className="rounded-lg font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-[#1A2B4B] data-[state=active]:shadow-sm">Student</TabsTrigger>
+                  <TabsTrigger value="company" className="rounded-lg font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-[#1A2B4B] data-[state=active]:shadow-sm">Company</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {role === "student" ? (
+                <form
+                  onSubmit={studentForm.handleSubmit(onSubmitStudent)}
+                  className="space-y-3.5"
+                >
+                  <div className="space-y-1.5">
+                    <label htmlFor="fullName" className="text-sm font-semibold text-gray-700">
+                      Full name
+                    </label>
+                    <input
+                      id="fullName"
+                      placeholder="Enter your full name"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...studentForm.register("fullName")}
+                    />
+                    {studentForm.formState.errors.fullName && (
+                      <p className="text-xs text-red-500">
+                        {studentForm.formState.errors.fullName.message as string}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...studentForm.register("email")}
+                    />
+                    {studentForm.formState.errors.email && (
+                      <p className="text-xs text-red-500">
+                        {studentForm.formState.errors.email.message as string}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Cohort year
+                    </label>
+                    <Select
+                      value={cohortYear}
+                      onValueChange={(v) => {
+                        setCohortYear(v);
+                        studentForm.setValue("cohortYear", Number(v));
+                      }}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1A2B4B]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COHORT_YEARS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      placeholder="Create password"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...studentForm.register("password")}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-xl text-sm font-bold bg-[#1A2B4B] hover:bg-[#0F1A2E] transition-all mt-5"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create student account
+                  </Button>
+                </form>
+              ) : (
+                <form
+                  onSubmit={companyForm.handleSubmit(onSubmitCompany)}
+                  className="space-y-3.5"
+                >
+                  <div className="space-y-1.5">
+                    <label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+                      Company name
+                    </label>
+                    <input
+                      id="companyName"
+                      placeholder="Enter company name"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...companyForm.register("companyName")}
+                    />
+                    {companyForm.formState.errors.companyName && (
+                      <p className="text-xs text-red-500">
+                        {companyForm.formState.errors.companyName.message as string}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Industry
+                    </label>
+                    <Select
+                      value={industry}
+                      onValueChange={(v) => {
+                        setIndustry(v);
+                        companyForm.setValue("industry", v);
+                      }}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1A2B4B]">
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRY_OPTIONS.map((ind) => (
+                          <SelectItem key={ind} value={ind}>
+                            {ind}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {companyForm.formState.errors.industry && (
+                      <p className="text-xs text-red-500">
+                        {companyForm.formState.errors.industry.message as string}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="companyEmail" className="text-sm font-semibold text-gray-700">
+                      Email
+                    </label>
+                    <input
+                      id="companyEmail"
+                      type="email"
+                      placeholder="Enter company email"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...companyForm.register("email")}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="companyPassword" className="text-sm font-semibold text-gray-700">
+                      Password
+                    </label>
+                    <input
+                      id="companyPassword"
+                      type="password"
+                      placeholder="Create password"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
+                      {...companyForm.register("password")}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-xl text-sm font-bold bg-[#1A2B4B] hover:bg-[#0F1A2E] transition-all mt-5"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create company account
+                  </Button>
+                </form>
+              )}
+
+              <p className="mt-6 text-center text-sm text-gray-600">
+                Already have an account?{" "}
+                <Link href="/login" className="font-bold text-[#1A2B4B] hover:text-[#0F1A2E] transition-colors">
+                  Log in
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
