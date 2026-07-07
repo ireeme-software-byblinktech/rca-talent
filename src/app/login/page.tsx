@@ -143,6 +143,7 @@ function LoginForm() {
                   </label>
                   <PasswordInput
                     id="password"
+                    label=""
                     placeholder="Enter your Password"
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
                     {...register("password")}
