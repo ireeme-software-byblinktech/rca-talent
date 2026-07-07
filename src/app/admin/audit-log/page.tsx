@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AdminMetricStrip } from "@/components/admin/AdminMetricStrip";
@@ -32,7 +32,7 @@ export default function AdminAuditLogPage() {
     queryFn: () => adminApi.getAuditLogs({ pageSize: 50 }),
   });
 
-  const logs = data?.data ?? [];
+  const logs = useMemo(() => data?.data ?? [], [data?.data]);
 
   const metrics = useMemo(
     () => [

@@ -123,7 +123,7 @@ function RegisterForm() {
                 Join RCA Talent
               </h2>
               <p className="text-white/80 leading-relaxed text-sm lg:text-base">
-                Connect with Rwanda's tech ecosystem
+                Connect with Rwanda&apos;s tech ecosystem
               </p>
             </div>
           </div>

@@ -1,14 +1,7 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  GraduationCap,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { HeroBackground } from "./MarketingSections";
-import { LandingHeroVisual } from "./HeroVisuals";
 
 export function LandingHero() {
   return (
@@ -28,7 +21,7 @@ export function LandingHero() {
       <div className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20 text-center">
         {/* Main Heading */}
         <h1 className="animate-fade-up opacity-0 mx-auto max-w-4xl text-5xl font-bold tracking-tight text-[#1A2B4B] sm:text-6xl lg:text-[4.5rem] leading-[1.1]">
-          Empowering Rwanda's Tech{" "}
+          Empowering Rwanda&apos;s Tech{" "}
           <span className="block mt-2 bg-gradient-to-r from-[#1A2B4B] via-[#3B5998] to-[#2A4070] bg-clip-text text-transparent">
             Future Together
           </span>
@@ -47,7 +40,7 @@ export function LandingHero() {
             asChild
           >
             <Link href="/register?role=student">
-              I'm a Student
+              I&apos;m a Student
             </Link>
           </Button>
           <Button
@@ -57,7 +50,7 @@ export function LandingHero() {
             asChild
           >
             <Link href="/register?role=company">
-              I'm a Company
+              I&apos;m a Company
             </Link>
           </Button>
         </div>
@@ -83,7 +76,6 @@ export function LandingHero() {
 interface AudienceCardProps {
   href: string;
   variant: "student" | "company";
-  icon: React.ReactNode;
   title: string;
   description: string;
   features: { icon: React.ReactNode; text: string }[];
@@ -94,7 +86,6 @@ interface AudienceCardProps {
 function AudienceCard({
   href,
   variant,
-  icon,
   title,
   description,
   features,
@@ -225,7 +216,6 @@ export function AudienceCardsSection() {
           <AudienceCard
             href="/for-students"
             variant="student"
-            icon={<GraduationCap className="h-7 w-7" />}
             title="For Students"
             stat="Free forever"
             description="Build your brand, publish a portfolio, and get discovered by employers actively hiring RCA graduates."
@@ -240,7 +230,6 @@ export function AudienceCardsSection() {
           <AudienceCard
             href="/for-companies"
             variant="company"
-            icon={<Building2 className="h-7 w-7" />}
             title="For Companies"
             stat="Verified talent"
             description="Search verified profiles, review real project work, and manage your entire hiring pipeline in one dashboard."

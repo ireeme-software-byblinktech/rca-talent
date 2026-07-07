@@ -39,7 +39,7 @@ export default function AdminUsersPage() {
       }),
   });
 
-  const users = data?.data ?? [];
+  const users = useMemo(() => data?.data ?? [], [data?.data]);
 
   const toggleMutation = useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
