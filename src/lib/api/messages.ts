@@ -1,11 +1,51 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { Conversation, Message, User } from "@/types";
+import { mapUser, type BackendUser } from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface ConversationWithParticipant extends Conversation {
   otherUser: User;
   unreadCount: number;
+}
+
+function mapBackendMessage(raw: Record<string, unknown>): Message {
+  return {
+    id: raw.id as string,
+    conversationId: raw.conversationId as string,
+    senderId: raw.senderId as string,
+    recipientId: raw.recipientId as string,
+    body: (raw.body as string) ?? (raw.content as string) ?? "",
+    read: (raw.read as boolean) ?? false,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+  };
+}
+
+function mapBackendConversation(
+  raw: Record<string, unknown>,
+  userId: string
+): ConversationWithParticipant {
+  const participantIds = raw.participantIds as string[];
+  const otherRaw = raw.otherUser as Record<string, unknown> | undefined;
+  const otherId = participantIds.find((id) => id !== userId) ?? "";
+
+  return {
+    id: raw.id as string,
+    participantIds: participantIds as [string, string],
+    lastMessage: (raw.lastMessage as string) ?? "",
+    updatedAt: String(raw.updatedAt ?? new Date().toISOString()),
+    otherUser: otherRaw
+      ? mapUser(otherRaw as unknown as BackendUser)
+      : {
+          id: otherId,
+          email: "",
+          role: "student",
+          createdAt: new Date().toISOString(),
+          isActive: true,
+        },
+    unreadCount: 0,
+  };
 }
 
 export const messagesApi = {
@@ -30,9 +70,10 @@ export const messagesApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<ConversationWithParticipant[]>(
+    const raw = await apiClient<Record<string, unknown>[]>(
       `/messages/conversations/${userId}`
     );
+    return raw.map((c) => mapBackendConversation(c, userId));
   },
 
   async getMessages(conversationId: string, userId: string): Promise<Message[]> {
@@ -52,12 +93,15 @@ export const messagesApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<Message[]>(`/messages/${conversationId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/messages/${conversationId}`
+    );
+    return raw.map(mapBackendMessage);
   },
 
   async send(
     conversationId: string,
-    senderId: string,
+    _senderId: string,
     recipientId: string,
     body: string
   ): Promise<Message> {
@@ -67,7 +111,7 @@ export const messagesApi = {
       const msg: Message = {
         id: generateId("msg"),
         conversationId,
-        senderId,
+        senderId: _senderId,
         recipientId,
         body,
         read: false,
@@ -82,10 +126,11 @@ export const messagesApi = {
       return msg;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Message>(`/messages/${conversationId}`, {
+    const raw = await apiClient<Record<string, unknown>>("/messages", {
       method: "POST",
-      body: { body, recipientId },
+      body: { recipientId, content: body },
     });
+    return mapBackendMessage(raw);
   },
 
   async startConversation(
@@ -116,9 +161,16 @@ export const messagesApi = {
       return conv;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Conversation>("/messages/conversations", {
+    const raw = await apiClient<Record<string, unknown>>("/messages", {
       method: "POST",
-      body: { otherUserId, initialMessage },
+      body: { recipientId: otherUserId, content: initialMessage },
     });
+    const msg = mapBackendMessage(raw);
+    return {
+      id: msg.conversationId,
+      participantIds: [userId, otherUserId],
+      lastMessage: initialMessage,
+      updatedAt: msg.createdAt,
+    };
   },
 };

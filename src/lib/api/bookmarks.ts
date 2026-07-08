@@ -1,6 +1,7 @@
+import { isMockMode } from "@/lib/config/env";
 import { simulateDelay } from "@/lib/mock/store";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 function getBookmarkKey(companyId: string) {
   return `rca-bookmarks-${companyId}`;

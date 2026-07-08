@@ -1,7 +1,8 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { JobPosting, JobType } from "@/types";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface CreateJobData {
   title: string;

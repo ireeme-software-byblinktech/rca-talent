@@ -55,6 +55,11 @@ export default function AdminOverviewPage() {
   if (metricsLoading || analyticsLoading) return <DashboardSkeleton />;
   if (!metrics || !analytics) return null;
 
+  const growth = analytics.growth ?? [];
+  const topSkills = analytics.topSkills ?? [];
+  const cohortBreakdown = analytics.cohortBreakdown ?? [];
+  const recentActivity = analytics.recentActivity ?? [];
+
   const verificationData = [
     { name: "Approved", value: metrics.approvedStudents, fill: "#10B981" },
     { name: "Pending", value: metrics.pendingStudents, fill: "#F59E0B" },
@@ -112,7 +117,7 @@ export default function AdminOverviewPage() {
           className="lg:col-span-2"
         >
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={analytics.growth}>
+            <AreaChart data={growth}>
               <defs>
                 <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#1A2B4B" stopOpacity={0.2} />
@@ -174,27 +179,33 @@ export default function AdminOverviewPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartCard title="Top Skills" description="Most common student skills">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={analytics.topSkills}
-              layout="vertical"
-              margin={{ left: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E5EB" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 12 }} />
-              <YAxis dataKey="skill" type="category" width={90} tick={{ fontSize: 11 }} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="count" name="Students" radius={[0, 4, 4, 0]}>
-                {analytics.topSkills.map((_, index) => (
-                  <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
+            {topSkills.length === 0 ? (
+              <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                No skill data yet.
+              </p>
+            ) : (
+              <BarChart
+                data={topSkills}
+                layout="vertical"
+                margin={{ left: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E5EB" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="skill" type="category" width={90} tick={{ fontSize: 11 }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="count" name="Students" radius={[0, 4, 4, 0]}>
+                  {topSkills.map((_, index) => (
+                    <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Cohort Breakdown" description="Students by graduation year">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={analytics.cohortBreakdown}>
+            <BarChart data={cohortBreakdown}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E5EB" />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
@@ -215,7 +226,7 @@ export default function AdminOverviewPage() {
           className="lg:col-span-2"
         >
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={analytics.growth}>
+            <LineChart data={growth}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E5EB" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
@@ -243,23 +254,27 @@ export default function AdminOverviewPage() {
 
         <ChartCard title="Recent Activity" description="Latest platform events">
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
-            {analytics.recentActivity.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border/40 bg-muted/20 p-3 transition-colors hover:bg-muted/40"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <Activity className="h-4 w-4 text-primary" />
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No recent admin activity yet.</p>
+            ) : (
+              recentActivity.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-start gap-3 rounded-xl border border-border/40 bg-muted/20 p-3 transition-colors hover:bg-muted/40"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <Activity className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">{item.action}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.actor}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs shrink-0 rounded-full">
+                    {item.time}
+                  </Badge>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-tight">{item.action}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.actor}</p>
-                </div>
-                <Badge variant="outline" className="text-xs shrink-0 rounded-full">
-                  {item.time}
-                </Badge>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </ChartCard>
       </div>

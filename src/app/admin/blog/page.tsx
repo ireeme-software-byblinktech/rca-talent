@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { blogApi, type CreateBlogPostData } from "@/lib/api/blog";
+import { slugify } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { BlogPost } from "@/types";
 
@@ -42,6 +43,7 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [published, setPublished] = useState(post?.published ?? true);
+  const isNew = !post;
 
   const form = useForm<PostForm>({
     resolver: zodResolver(postSchema),
@@ -54,8 +56,16 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
           author: post.author,
           tags: post.tags.join(", "),
         }
-      : { author: "RCA Talent Team" },
+      : { author: "RCA Talent Team", slug: "", title: "", excerpt: "", content: "", tags: "" },
   });
+
+  const title = form.watch("title");
+
+  useEffect(() => {
+    if (isNew && title.trim()) {
+      form.setValue("slug", slugify(title), { shouldValidate: true });
+    }
+  }, [title, isNew, form]);
 
   const mutation = useMutation({
     mutationFn: (data: PostForm) => {
@@ -80,21 +90,29 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
   return (
     <form
       onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
-      className="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
+      className="space-y-5 max-h-[70vh] overflow-y-auto px-1 pb-2"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label>Slug</Label>
-          <Input className="mt-1.5" {...form.register("slug")} placeholder="my-post-title" />
-        </div>
-        <div>
-          <Label>Author</Label>
-          <Input className="mt-1.5" {...form.register("author")} />
-        </div>
-      </div>
       <div>
         <Label>Title</Label>
-        <Input className="mt-1.5" {...form.register("title")} />
+        <Input className="mt-1.5" {...form.register("title")} placeholder="Enter post title" />
+      </div>
+      <div>
+        <Label>Slug</Label>
+        <Input
+          className="mt-1.5 bg-muted/40"
+          readOnly
+          {...form.register("slug")}
+          placeholder="auto-generated-from-title"
+        />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {isNew
+            ? "Auto-generated from the title. URL will be /blog/your-slug"
+            : "Slug is fixed after publishing to keep URLs stable."}
+        </p>
+      </div>
+      <div>
+        <Label>Author</Label>
+        <Input className="mt-1.5" {...form.register("author")} />
       </div>
       <div>
         <Label>Excerpt</Label>
@@ -108,7 +126,7 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
         <Label>Tags (comma-separated)</Label>
         <Input className="mt-1.5" {...form.register("tags")} placeholder="RCA, Careers" />
       </div>
-      <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 p-3">
+      <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
         <Label>Published</Label>
         <Switch checked={published} onCheckedChange={setPublished} />
       </div>
@@ -180,8 +198,8 @@ export default function AdminBlogPage() {
               New post
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg rounded-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl gap-6 rounded-2xl p-6 sm:p-8">
+            <DialogHeader className="space-y-2">
               <DialogTitle>{editing ? "Edit post" : "New blog post"}</DialogTitle>
             </DialogHeader>
             <PostDialog post={editing} onClose={() => setDialogOpen(false)} />

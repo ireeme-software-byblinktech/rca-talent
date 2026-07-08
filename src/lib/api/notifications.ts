@@ -1,7 +1,29 @@
+import { isMockMode } from "@/lib/config/env";
 import { getStore, simulateDelay } from "@/lib/mock/store";
 import type { Notification } from "@/types";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
+
+function mapBackendNotification(raw: Record<string, unknown>): Notification {
+  const typeMap: Record<string, Notification["type"]> = {
+    VERIFICATION_APPROVED: "verification",
+    VERIFICATION_REJECTED: "verification",
+    CONTACT_REQUEST_SENT: "contact_request",
+    CONTACT_REQUEST_ACCEPTED: "contact_request",
+    CONTACT_REQUEST_REJECTED: "contact_request",
+    SYSTEM_ANNOUNCEMENT: "system",
+  };
+
+  return {
+    id: raw.id as string,
+    userId: (raw.userId as string) ?? "",
+    title: (raw.title as string) ?? "",
+    message: (raw.message as string) ?? (raw.body as string) ?? "",
+    read: (raw.read as boolean) ?? (raw.isRead as boolean) ?? false,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    type: typeMap[(raw.type as string) ?? ""] ?? "system",
+  };
+}
 
 export const notificationsApi = {
   async getForUser(userId: string): Promise<Notification[]> {
@@ -16,7 +38,10 @@ export const notificationsApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<Notification[]>(`/notifications/${userId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/notifications/${userId}`
+    );
+    return raw.map(mapBackendNotification);
   },
 
   async markAsRead(notificationId: string): Promise<void> {

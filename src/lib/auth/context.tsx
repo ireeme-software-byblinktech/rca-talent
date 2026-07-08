@@ -9,11 +9,16 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
-import { setAuthToken } from "@/lib/api/client";
+import {
+  setAuthToken,
+  setOnTokensRefreshed,
+  setRefreshToken,
+} from "@/lib/api/client";
 import type {
   AuthSession,
   LoginCredentials,
   RegisterCompanyData,
+  RegisterPendingResponse,
   RegisterStudentData,
   User,
   UserRole,
@@ -24,8 +29,8 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  registerStudent: (data: RegisterStudentData) => Promise<void>;
-  registerCompany: (data: RegisterCompanyData) => Promise<void>;
+  registerStudent: (data: RegisterStudentData) => Promise<RegisterPendingResponse>;
+  registerCompany: (data: RegisterCompanyData) => Promise<RegisterPendingResponse>;
   logout: () => Promise<void>;
 }
 
@@ -48,9 +53,11 @@ function storeSession(session: AuthSession | null) {
   if (session) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setAuthToken(session.token);
+    setRefreshToken(session.refreshToken ?? null);
   } else {
     localStorage.removeItem(SESSION_KEY);
     setAuthToken(null);
+    setRefreshToken(null);
   }
 }
 
@@ -61,11 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    setOnTokensRefreshed((tokens) => {
+      const session = getStoredSession();
+      if (session) {
+        const updated = {
+          ...session,
+          token: tokens.token,
+          refreshToken: tokens.refreshToken,
+        };
+        storeSession(updated);
+        setToken(tokens.token);
+      }
+    });
+
     const session = getStoredSession();
     if (session) {
       setUser(session.user);
       setToken(session.token);
       setAuthToken(session.token);
+      setRefreshToken(session.refreshToken ?? null);
       authApi
         .getMe(session.token)
         .then((freshUser) => setUser(freshUser))
@@ -78,6 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setIsLoading(false);
     }
+
+    return () => setOnTokensRefreshed(null);
   }, []);
 
   const handleAuthSuccess = useCallback(
@@ -105,19 +128,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const registerStudent = useCallback(
-    async (data: RegisterStudentData) => {
-      const session = await authApi.registerStudent(data);
-      handleAuthSuccess(session);
+    async (data: RegisterStudentData): Promise<RegisterPendingResponse> => {
+      const result = await authApi.registerStudent(data);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(result.email)}&pending=1`
+      );
+      return result;
     },
-    [handleAuthSuccess]
+    [router]
   );
 
   const registerCompany = useCallback(
-    async (data: RegisterCompanyData) => {
-      const session = await authApi.registerCompany(data);
-      handleAuthSuccess(session);
+    async (data: RegisterCompanyData): Promise<RegisterPendingResponse> => {
+      const result = await authApi.registerCompany(data);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(result.email)}&pending=1`
+      );
+      return result;
     },
-    [handleAuthSuccess]
+    [router]
   );
 
   const logout = useCallback(async () => {

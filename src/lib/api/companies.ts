@@ -1,7 +1,13 @@
+import { isMockMode } from "@/lib/config/env";
 import { getStore, simulateDelay } from "@/lib/mock/store";
 import type { CompanyProfile, CompanyWithUser } from "@/types";
+import {
+  mapCompanyProfile,
+  mapCompanyUpdateToBackend,
+  mapCompanyWithUser,
+} from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface UpdateCompanyProfileData {
   companyName?: string;
@@ -19,7 +25,10 @@ export const companiesApi = {
       return store.companyProfiles.find((p) => p.userId === userId) ?? null;
     }
     const { apiClient } = await import("./client");
-    return apiClient<CompanyProfile>(`/companies/${userId}/profile`);
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${userId}/profile`
+    );
+    return mapCompanyProfile(raw);
   },
 
   async updateProfile(
@@ -39,10 +48,14 @@ export const companiesApi = {
       return store.companyProfiles[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<CompanyProfile>(`/companies/${userId}/profile`, {
-      method: "PATCH",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${userId}/profile`,
+      {
+        method: "PATCH",
+        body: mapCompanyUpdateToBackend(data as Record<string, unknown>),
+      }
+    );
+    return mapCompanyProfile(raw);
   },
 
   async getCompanyWithUser(userId: string): Promise<CompanyWithUser | null> {
@@ -56,6 +69,7 @@ export const companiesApi = {
       return { ...profile, user };
     }
     const { apiClient } = await import("./client");
-    return apiClient<CompanyWithUser>(`/companies/${userId}`);
+    const raw = await apiClient<Record<string, unknown>>(`/companies/${userId}`);
+    return mapCompanyWithUser(raw);
   },
 };

@@ -1,8 +1,10 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { InterviewInvitation, InterviewStatus, JobPosting } from "@/types";
 import type { CompanyProfile, StudentProfile, User } from "@/types";
+import { mapInterview, mapUser, type BackendUser } from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface InterviewWithDetails extends InterviewInvitation {
   company?: CompanyProfile & { user: User };
@@ -25,7 +27,10 @@ export const interviewsApi = {
       return enrich(getStore().interviewInvitations.filter((i) => i.companyId === companyId));
     }
     const { apiClient } = await import("./client");
-    return apiClient<InterviewWithDetails[]>(`/interviews/company/${companyId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/companies/${companyId}/interviews`
+    );
+    return raw.map((item) => enrichFromBackend(item));
   },
 
   async getForStudent(studentId: string): Promise<InterviewWithDetails[]> {
@@ -34,7 +39,10 @@ export const interviewsApi = {
       return enrich(getStore().interviewInvitations.filter((i) => i.studentId === studentId));
     }
     const { apiClient } = await import("./client");
-    return apiClient<InterviewWithDetails[]>(`/interviews/student/${studentId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/students/${studentId}/interviews`
+    );
+    return raw.map((item) => enrichFromBackend(item));
   },
 
   async create(companyId: string, data: CreateInterviewData): Promise<InterviewInvitation> {
@@ -51,36 +59,38 @@ export const interviewsApi = {
       return inv;
     }
     const { apiClient } = await import("./client");
-    return apiClient<InterviewInvitation>("/interviews", {
+    const raw = await apiClient<Record<string, unknown>>("/interviews", {
       method: "POST",
       body: { ...data, companyId },
     });
+    return mapInterview(raw);
   },
 
   async respond(
     invitationId: string,
-    studentId: string,
+    _studentId: string,
     status: "accepted" | "declined"
   ): Promise<InterviewInvitation> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
       const idx = store.interviewInvitations.findIndex(
-        (i) => i.id === invitationId && i.studentId === studentId
+        (i) => i.id === invitationId && i.studentId === _studentId
       );
       if (idx === -1) throw new Error("Invitation not found");
       store.interviewInvitations[idx].status = status;
       return store.interviewInvitations[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<InterviewInvitation>(`/interviews/${invitationId}/respond`, {
-      method: "POST",
-      body: { status },
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/interviews/${invitationId}/respond`,
+      { method: "POST", body: { status } }
+    );
+    return mapInterview(raw);
   },
 
   async updateStatus(
-    companyId: string,
+    _companyId: string,
     invitationId: string,
     status: InterviewStatus
   ): Promise<InterviewInvitation> {
@@ -88,17 +98,21 @@ export const interviewsApi = {
       await simulateDelay();
       const store = getStore();
       const idx = store.interviewInvitations.findIndex(
-        (i) => i.id === invitationId && i.companyId === companyId
+        (i) => i.id === invitationId
       );
       if (idx === -1) throw new Error("Invitation not found");
       store.interviewInvitations[idx].status = status;
       return store.interviewInvitations[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<InterviewInvitation>(`/interviews/${invitationId}`, {
-      method: "PATCH",
-      body: { status },
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/interviews/${invitationId}`,
+      {
+        method: "PATCH",
+        body: { status: status.toUpperCase() },
+      }
+    );
+    return mapInterview(raw);
   },
 };
 
@@ -117,4 +131,59 @@ function enrich(items: InterviewInvitation[]): InterviewWithDetails[] {
       job,
     };
   });
+}
+
+function enrichFromBackend(raw: Record<string, unknown>): InterviewWithDetails {
+  const inv = mapInterview(raw);
+  const result: InterviewWithDetails = { ...inv };
+
+  const companyProfile = raw.companyProfile as Record<string, unknown> | undefined;
+  const studentProfile = raw.studentProfile as Record<string, unknown> | undefined;
+  const project = raw.project as Record<string, unknown> | undefined;
+
+  if (companyProfile?.user) {
+    result.company = {
+      userId: companyProfile.userId as string,
+      companyName: (companyProfile.companyName as string) ?? "",
+      description: (companyProfile.description as string) ?? "",
+      industry: (companyProfile.industry as string) ?? "",
+      verificationStatus: "approved",
+      updatedAt: String(companyProfile.updatedAt ?? new Date().toISOString()),
+      user: mapUser(companyProfile.user as unknown as BackendUser),
+    };
+  }
+
+  if (studentProfile?.user) {
+    const first = (studentProfile.firstName as string) ?? "";
+    const last = (studentProfile.lastName as string) ?? "";
+    result.student = {
+      userId: studentProfile.userId as string,
+      fullName: [first, last].filter(Boolean).join(" ") || "Student",
+      bio: (studentProfile.bio as string) ?? "",
+      skills: [],
+      links: {},
+      verificationStatus: "approved",
+      cohortYear: (studentProfile.cohortYear as number) ?? new Date().getFullYear(),
+      availability: [],
+      isVisible: true,
+      updatedAt: String(studentProfile.updatedAt ?? new Date().toISOString()),
+      user: mapUser(studentProfile.user as unknown as BackendUser),
+    };
+  }
+
+  if (project) {
+    result.job = {
+      id: project.id as string,
+      companyId: inv.companyId,
+      title: (project.title as string) ?? "",
+      description: (project.description as string) ?? "",
+      type: "full-time",
+      location: (project.location as string) ?? "",
+      skills: [],
+      status: "open",
+      createdAt: String(project.createdAt ?? new Date().toISOString()),
+    };
+  }
+
+  return result;
 }

@@ -1,7 +1,8 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { BlogPost, BlogSubscriber } from "@/types";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface CreateBlogPostData {
   slug: string;
@@ -12,6 +13,24 @@ export interface CreateBlogPostData {
   tags: string[];
   published?: boolean;
   coverImage?: string;
+}
+
+function mapBlogPost(raw: Record<string, unknown>): BlogPost {
+  const publishedAt = raw.publishedAt ?? raw.createdAt ?? new Date().toISOString();
+  const updatedAt = raw.updatedAt ?? publishedAt;
+  return {
+    id: raw.id as string,
+    slug: raw.slug as string,
+    title: raw.title as string,
+    excerpt: (raw.excerpt as string) ?? "",
+    content: (raw.content as string) ?? "",
+    author: (raw.author as string) ?? "",
+    coverImage: raw.coverImage as string | undefined,
+    tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
+    published: Boolean(raw.published),
+    publishedAt: String(publishedAt),
+    updatedAt: String(updatedAt),
+  };
 }
 
 export const blogApi = {
@@ -26,7 +45,8 @@ export const blogApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost[]>("/blog");
+    const raw = await apiClient<Record<string, unknown>[]>("/blog");
+    return raw.map(mapBlogPost);
   },
 
   async listAll(): Promise<BlogPost[]> {
@@ -48,7 +68,8 @@ export const blogApi = {
       return post?.published ? post : null;
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost | null>(`/blog/${slug}`);
+    const raw = await apiClient<Record<string, unknown> | null>(`/blog/${slug}`);
+    return raw ? mapBlogPost(raw) : null;
   },
 
   async getBySlugAdmin(slug: string): Promise<BlogPost | null> {

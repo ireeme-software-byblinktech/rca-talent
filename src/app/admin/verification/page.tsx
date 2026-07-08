@@ -31,13 +31,12 @@ import {
   getStudentChecklist,
   getStudentCompleteness,
 } from "@/lib/verification-utils";
-import type { StudentWithUser } from "@/types";
 
 export default function AdminVerificationPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedStudent, setSelectedStudent] = useState<StudentWithUser | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [search, setSearch] = useState("");
@@ -58,15 +57,23 @@ export default function AdminVerificationPage() {
     );
   }, [pendingStudents, search]);
 
+  const selectedStudent = useMemo(() => {
+    if (filtered.length === 0) return null;
+    if (selectedStudentId) {
+      return filtered.find((s) => s.userId === selectedStudentId) ?? filtered[0];
+    }
+    return filtered[0];
+  }, [filtered, selectedStudentId]);
+
   useEffect(() => {
     if (filtered.length === 0) {
-      setSelectedStudent(null);
+      setSelectedStudentId(null);
       return;
     }
-    if (!selectedStudent || !filtered.some((s) => s.userId === selectedStudent.userId)) {
-      setSelectedStudent(filtered[0]);
+    if (selectedStudentId && !filtered.some((s) => s.userId === selectedStudentId)) {
+      setSelectedStudentId(filtered[0].userId);
     }
-  }, [filtered, selectedStudent]);
+  }, [filtered, selectedStudentId]);
 
   const approveMutation = useMutation({
     mutationFn: (studentId: string) => adminApi.approveStudent(user!.id, studentId),
@@ -74,7 +81,7 @@ export default function AdminVerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-students"] });
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Student approved", description: "Profile is now visible to employers." });
-      setSelectedStudent(null);
+      setSelectedStudentId(null);
     },
   });
 
@@ -86,7 +93,7 @@ export default function AdminVerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Student rejected" });
       setShowRejectDialog(false);
-      setSelectedStudent(null);
+      setSelectedStudentId(null);
       setRejectReason("");
     },
   });
@@ -163,7 +170,7 @@ export default function AdminVerificationPage() {
                     submittedAt={student.updatedAt}
                     completeness={getStudentCompleteness(student)}
                     selected={selectedStudent?.userId === student.userId}
-                    onClick={() => setSelectedStudent(student)}
+                    onClick={() => setSelectedStudentId(student.userId)}
                   />
                 ))
               )}

@@ -1,4 +1,5 @@
 import { paginate, type PaginatedResponse } from "@/lib/api/client";
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type {
   Availability,
@@ -6,8 +7,13 @@ import type {
   StudentProfile,
   StudentWithUser,
 } from "@/types";
+import {
+  mapStudentProfile,
+  mapStudentUpdateToBackend,
+  mapStudentWithUser,
+} from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface StudentSearchParams {
   query?: string;
@@ -46,7 +52,8 @@ export const studentsApi = {
       return store.studentProfiles.find((p) => p.userId === userId) ?? null;
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentProfile>(`/students/${userId}/profile`);
+    const raw = await apiClient<Record<string, unknown>>(`/students/${userId}/profile`);
+    return mapStudentProfile(raw);
   },
 
   async updateProfile(
@@ -66,10 +73,25 @@ export const studentsApi = {
       return store.studentProfiles[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentProfile>(`/students/${userId}/profile`, {
-      method: "PATCH",
-      body: data,
-    });
+    await apiClient<Record<string, unknown>>(
+      `/students/${userId}/profile`,
+      {
+        method: "PATCH",
+        body: mapStudentUpdateToBackend(data as Record<string, unknown>),
+      }
+    );
+
+    if (data.skills !== undefined) {
+      await apiClient<Record<string, unknown>>(`/students/${userId}/skills/sync`, {
+        method: "PUT",
+        body: { skillNames: data.skills },
+      });
+    }
+
+    const raw = await apiClient<Record<string, unknown>>(
+      `/students/${userId}/profile`
+    );
+    return mapStudentProfile(raw);
   },
 
   async resubmitForVerification(userId: string): Promise<StudentProfile> {
@@ -84,10 +106,11 @@ export const studentsApi = {
       return store.studentProfiles[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentProfile>(
+    const raw = await apiClient<Record<string, unknown>>(
       `/students/${userId}/resubmit-verification`,
       { method: "POST" }
     );
+    return mapStudentProfile(raw);
   },
 
   async search(params: StudentSearchParams = {}): Promise<PaginatedResponse<StudentWithUser>> {
@@ -149,7 +172,8 @@ export const studentsApi = {
       return { ...profile, user };
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentWithUser>(`/students/${userId}`);
+    const raw = await apiClient<Record<string, unknown>>(`/students/${userId}`);
+    return mapStudentWithUser(raw);
   },
 
   async getProjects(studentId: string): Promise<Project[]> {

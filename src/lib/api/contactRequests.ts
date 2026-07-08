@@ -1,7 +1,13 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { ContactRequest, ContactRequestWithDetails } from "@/types";
+import type { BackendContactRequest } from "./mappers";
+import {
+  mapContactRequest,
+  mapContactRequestWithDetails,
+} from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface CreateContactRequestData {
   studentId: string;
@@ -46,9 +52,10 @@ export const contactRequestsApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContactRequestWithDetails[]>(
-      `/contact-requests/student/${studentId}`
+    const raw = await apiClient<BackendContactRequest[]>(
+      "/contact-requests/received/me"
     );
+    return raw.map((r) => mapContactRequestWithDetails(r));
   },
 
   async getForCompany(companyId: string): Promise<ContactRequestWithDetails[]> {
@@ -64,18 +71,20 @@ export const contactRequestsApi = {
         );
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContactRequestWithDetails[]>(
-      `/contact-requests/company/${companyId}`
+    const raw = await apiClient<BackendContactRequest[]>(
+      "/contact-requests/sent/me"
     );
+    return raw.map((r) => mapContactRequestWithDetails(r));
   },
 
   async create(
-    companyId: string,
+    _companyId: string,
     data: CreateContactRequestData
   ): Promise<ContactRequest> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
+      const companyId = _companyId;
       const existing = store.contactRequests.find(
         (r) =>
           r.companyId === companyId &&
@@ -106,22 +115,23 @@ export const contactRequestsApi = {
       return request;
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContactRequest>("/contact-requests", {
+    const raw = await apiClient<BackendContactRequest>("/contact-requests", {
       method: "POST",
-      body: { ...data, companyId },
+      body: { receiverId: data.studentId, message: data.message },
     });
+    return mapContactRequest(raw);
   },
 
   async respond(
     requestId: string,
-    studentId: string,
+    _studentId: string,
     status: "accepted" | "declined"
   ): Promise<ContactRequest> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
       const idx = store.contactRequests.findIndex(
-        (r) => r.id === requestId && r.studentId === studentId
+        (r) => r.id === requestId && r.studentId === _studentId
       );
       if (idx === -1) throw new Error("Request not found");
       store.contactRequests[idx].status = status;
@@ -129,10 +139,14 @@ export const contactRequestsApi = {
       return store.contactRequests[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContactRequest>(`/contact-requests/${requestId}/respond`, {
+    const endpoint =
+      status === "accepted"
+        ? `/contact-requests/${requestId}/accept`
+        : `/contact-requests/${requestId}/decline`;
+    const raw = await apiClient<BackendContactRequest>(endpoint, {
       method: "POST",
-      body: { status },
     });
+    return mapContactRequest(raw);
   },
 
   async getExistingRequest(
@@ -152,8 +166,9 @@ export const contactRequestsApi = {
       );
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContactRequest | null>(
+    const raw = await apiClient<BackendContactRequest | null>(
       `/contact-requests/existing?companyId=${companyId}&studentId=${studentId}`
     );
+    return raw ? mapContactRequest(raw) : null;
   },
 };

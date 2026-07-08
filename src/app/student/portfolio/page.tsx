@@ -704,7 +704,9 @@ export default function StudentPortfolioPage() {
                   </select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Profile photo URL</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Profile photo URL <span className="text-muted-foreground/70">(optional)</span>
+                  </Label>
                   <Input
                     className="mt-1.5"
                     placeholder="https://..."
@@ -724,7 +726,9 @@ export default function StudentPortfolioPage() {
                   </Button>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">CV / resume URL</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    CV / resume URL <span className="text-muted-foreground/70">(optional)</span>
+                  </Label>
                   <Input
                     className="mt-1.5"
                     placeholder="https://... or /mock/cv.pdf"

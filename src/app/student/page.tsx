@@ -15,9 +15,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Eye,
   FileText,
   FolderKanban,
+  MessageSquare,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,37 +28,36 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DashboardSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { contactRequestsApi } from "@/lib/api/contactRequests";
+import { analyticsApi } from "@/lib/api/analytics";
 import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
+import { queryKeys } from "@/lib/query/keys";
 import { formatRelativeDate } from "@/lib/utils";
-
-const profileViewsData = [
-  { week: "W1", views: 4 },
-  { week: "W2", views: 8 },
-  { week: "W3", views: 12 },
-  { week: "W4", views: 18 },
-  { week: "W5", views: 24 },
-  { week: "W6", views: 31 },
-];
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
 
   const { data: profile, isLoading: profileLoading, error: profileError, refetch } = useQuery({
-    queryKey: ["student-profile", user?.id],
+    queryKey: queryKeys.students.profile(user?.id ?? ""),
     queryFn: () => studentsApi.getProfile(user!.id),
     enabled: !!user,
   });
 
   const { data: projects = [] } = useQuery({
-    queryKey: ["student-projects", user?.id],
+    queryKey: queryKeys.students.projects(user?.id ?? ""),
     queryFn: () => studentsApi.getProjects(user!.id),
     enabled: !!user,
   });
 
   const { data: requests = [] } = useQuery({
-    queryKey: ["student-contact-requests", user?.id],
+    queryKey: queryKeys.contactRequests.forStudent(user?.id ?? ""),
     queryFn: () => contactRequestsApi.getForStudent(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: analytics } = useQuery({
+    queryKey: queryKeys.students.analytics(user?.id ?? ""),
+    queryFn: () => analyticsApi.getStudentCareerAnalytics(user!.id),
     enabled: !!user,
   });
 
@@ -66,6 +65,16 @@ export default function StudentDashboardPage() {
   if (profileError || !profile) {
     return <ErrorState onRetry={() => refetch()} />;
   }
+
+  const weeklyContactRequests = analytics?.weeklyContactRequests ?? [];
+  const latestWeekRequests = weeklyContactRequests.at(-1)?.count ?? 0;
+  const previousWeekRequests = weeklyContactRequests.at(-2)?.count ?? 0;
+  const requestTrend =
+    previousWeekRequests > 0
+      ? Math.round(
+          ((latestWeekRequests - previousWeekRequests) / previousWeekRequests) * 100
+        )
+      : undefined;
 
   const completeness = studentsApi.getProfileCompleteness(profile, projects.length);
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
@@ -124,11 +133,15 @@ export default function StudentDashboardPage() {
           icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatCard
-          title="Profile views"
-          value={profileViewsData.at(-1)?.views ?? 0}
-          subtitle="This month"
-          icon={<Eye className="h-5 w-5" />}
-          trend={{ value: 28, label: "vs last month" }}
+          title="Contact requests"
+          value={analytics?.totalContactRequests ?? requests.length}
+          subtitle={`${latestWeekRequests} this week`}
+          icon={<MessageSquare className="h-5 w-5" />}
+          trend={
+            requestTrend !== undefined
+              ? { value: requestTrend, label: "vs prior week" }
+              : undefined
+          }
         />
         <StatCard
           title="Pending requests"
@@ -145,12 +158,17 @@ export default function StudentDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <ChartCard
-          title="Profile Views"
-          description="Weekly profile impressions"
+          title="Contact Request Activity"
+          description="Weekly requests from employers"
           className="lg:col-span-2"
         >
+          {weeklyContactRequests.every((week) => week.count === 0) ? (
+            <div className="flex h-[220px] w-full items-center justify-center">
+              <p className="text-sm text-muted-foreground">No contact requests yet.</p>
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={profileViewsData}>
+            <AreaChart data={weeklyContactRequests}>
               <defs>
                 <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#1A2B4B" stopOpacity={0.15} />
@@ -159,18 +177,19 @@ export default function StudentDashboardPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E5EB" />
               <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
               <Tooltip content={<ChartTooltip />} />
               <Area
                 type="monotone"
-                dataKey="views"
-                name="Views"
+                dataKey="count"
+                name="Requests"
                 stroke="#1A2B4B"
                 fill="url(#viewsGrad)"
                 strokeWidth={2}
               />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </ChartCard>
 
         <ChartCard title="Profile Health">

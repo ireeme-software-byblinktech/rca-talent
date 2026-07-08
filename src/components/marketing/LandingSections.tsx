@@ -3,7 +3,24 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function LandingHero() {
+export function LandingHero({
+  stats,
+  loading = false,
+}: {
+  stats?: { graduates: string; companies: string; verifiedRate: string };
+  loading?: boolean;
+}) {
+  const displayStats = stats
+    ? [
+        { value: stats.graduates, label: "RCA Graduates" },
+        { value: stats.companies, label: "Partner Companies" },
+        { value: stats.verifiedRate, label: "Verified Profiles" },
+      ]
+    : [
+        { value: "0", label: "RCA Graduates" },
+        { value: "0", label: "Partner Companies" },
+        { value: "0%", label: "Verified Profiles" },
+      ];
   return (
     <section className="relative overflow-hidden min-h-[550px] flex items-center">
       {/* Imigongo Geometric Pattern Background */}
@@ -57,13 +74,13 @@ export function LandingHero() {
 
         {/* Stats */}
         <div className="animate-fade-up stagger-3 opacity-0 mt-14 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
-          {[
-            { value: "120+", label: "RCA Graduates" },
-            { value: "45+", label: "Partner Companies" },
-            { value: "95%", label: "Verified Profiles" },
-          ].map((s) => (
+          {displayStats.map((s) => (
             <div key={s.label} className="text-center">
-              <p className="text-3xl font-bold text-[#1A2B4B]">{s.value}</p>
+              <p
+                className={`text-3xl font-bold text-[#1A2B4B] ${loading ? "opacity-60" : ""}`}
+              >
+                {s.value}
+              </p>
               <p className="text-sm text-gray-600 mt-1 font-medium">{s.label}</p>
             </div>
           ))}

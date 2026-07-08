@@ -1,9 +1,10 @@
+import { isMockMode } from "@/lib/config/env";
 import { getStore, simulateDelay } from "@/lib/mock/store";
 import type { CareerAnalytics, RecruitmentMetrics } from "@/types";
 import { studentsApi } from "./students";
 import { contactRequestsApi } from "./contactRequests";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export const analyticsApi = {
   async getStudentCareerAnalytics(userId: string): Promise<CareerAnalytics> {
@@ -16,13 +17,22 @@ export const analyticsApi = {
       const total = requests.length || 1;
       return {
         profileViews: [
-          { week: "W1", views: 4 },
-          { week: "W2", views: 8 },
-          { week: "W3", views: 12 },
-          { week: "W4", views: 18 },
-          { week: "W5", views: 24 },
-          { week: "W6", views: 31 },
+          { week: "W1", views: 0 },
+          { week: "W2", views: 0 },
+          { week: "W3", views: 0 },
+          { week: "W4", views: 0 },
+          { week: "W5", views: 0 },
+          { week: "W6", views: 0 },
         ],
+        weeklyContactRequests: [
+          { week: "W1", count: 0 },
+          { week: "W2", count: 0 },
+          { week: "W3", count: 0 },
+          { week: "W4", count: 0 },
+          { week: "W5", count: 0 },
+          { week: "W6", count: requests.filter((r) => r.status === "pending").length },
+        ],
+        totalContactRequests: total,
         contactRequestRate: Math.round((total / 6) * 10) / 10,
         profileCompleteness: profile
           ? studentsApi.getProfileCompleteness(profile, projects.length)
@@ -32,7 +42,22 @@ export const analyticsApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<CareerAnalytics>(`/students/${userId}/analytics`);
+    const raw = await apiClient<Record<string, unknown>>(`/students/${userId}/analytics`);
+    return {
+      profileViews: Array.isArray(raw.profileViews)
+        ? (raw.profileViews as CareerAnalytics["profileViews"])
+        : [],
+      weeklyContactRequests: Array.isArray(raw.weeklyContactRequests)
+        ? (raw.weeklyContactRequests as CareerAnalytics["weeklyContactRequests"])
+        : [],
+      totalContactRequests: (raw.totalContactRequests as number) ?? 0,
+      contactRequestRate: (raw.contactRequestRate as number) ?? 0,
+      profileCompleteness: (raw.profileCompleteness as number) ?? 0,
+      topSkills: Array.isArray(raw.topSkills)
+        ? (raw.topSkills as string[])
+        : [],
+      responseRate: (raw.responseRate as number) ?? 0,
+    };
   },
 
   async getRecruitmentMetrics(companyId: string): Promise<RecruitmentMetrics> {

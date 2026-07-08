@@ -29,13 +29,12 @@ import {
   getCompanyChecklist,
   getCompanyCompleteness,
 } from "@/lib/verification-utils";
-import type { CompanyWithUser } from "@/types";
 
 export default function AdminEmployerVerificationPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<CompanyWithUser | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
   const [search, setSearch] = useState("");
@@ -43,6 +42,7 @@ export default function AdminEmployerVerificationPage() {
   const { data: pending = [], isLoading } = useQuery({
     queryKey: ["admin-pending-companies"],
     queryFn: () => adminApi.getPendingCompanies(),
+    refetchOnWindowFocus: true,
   });
 
   const filtered = useMemo(() => {
@@ -56,15 +56,23 @@ export default function AdminEmployerVerificationPage() {
     );
   }, [pending, search]);
 
+  const selected = useMemo(() => {
+    if (filtered.length === 0) return null;
+    if (selectedId) {
+      return filtered.find((c) => c.userId === selectedId) ?? filtered[0];
+    }
+    return filtered[0];
+  }, [filtered, selectedId]);
+
   useEffect(() => {
     if (filtered.length === 0) {
-      setSelected(null);
+      setSelectedId(null);
       return;
     }
-    if (!selected || !filtered.some((c) => c.userId === selected.userId)) {
-      setSelected(filtered[0]);
+    if (selectedId && !filtered.some((c) => c.userId === selectedId)) {
+      setSelectedId(filtered[0].userId);
     }
-  }, [filtered, selected]);
+  }, [filtered, selectedId]);
 
   const approveMutation = useMutation({
     mutationFn: (companyId: string) => adminApi.approveCompany(user!.id, companyId),
@@ -72,7 +80,7 @@ export default function AdminEmployerVerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Employer approved", description: "Company can now post jobs and contact students." });
-      setSelected(null);
+      setSelectedId(null);
     },
   });
 
@@ -84,7 +92,7 @@ export default function AdminEmployerVerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Employer rejected" });
       setShowReject(false);
-      setSelected(null);
+      setSelectedId(null);
       setRejectReason("");
     },
   });
@@ -98,7 +106,9 @@ export default function AdminEmployerVerificationPage() {
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
   const checklist = selected ? getCompanyChecklist(selected) : [];
-  const canApprove = checklist.length > 0 && checklist.filter((c) => c.met).length >= 4;
+  const metCount = checklist.filter((c) => c.met).length;
+  const canApprove = checklist.length > 0 && metCount >= 4;
+  const missingItems = checklist.filter((c) => !c.met).map((c) => c.label);
 
   return (
     <div className="space-y-6">
@@ -159,7 +169,7 @@ export default function AdminEmployerVerificationPage() {
                     submittedAt={company.updatedAt}
                     completeness={getCompanyCompleteness(company)}
                     selected={selected?.userId === company.userId}
-                    onClick={() => setSelected(company)}
+                    onClick={() => setSelectedId(company.userId)}
                   />
                 ))
               )}
@@ -222,6 +232,9 @@ export default function AdminEmployerVerificationPage() {
                   {!canApprove && (
                     <p className="text-xs text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2">
                       At least 4 checklist items must pass before approval is enabled.
+                      {missingItems.length > 0 && (
+                        <> Still needed: {missingItems.join(", ")}.</>
+                      )}
                     </p>
                   )}
                   <VerificationDetailSection label="Company overview">

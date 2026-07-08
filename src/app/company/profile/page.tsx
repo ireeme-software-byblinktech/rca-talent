@@ -67,6 +67,13 @@ export default function CompanyProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["company-profile"] });
       toast({ title: "Profile saved" });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to save profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) return <LoadingSkeleton rows={3} />;

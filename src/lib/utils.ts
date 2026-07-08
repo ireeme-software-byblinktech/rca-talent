@@ -5,6 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Format a count for marketing/landing pages (e.g. 0, 3, 45+, 120+). */
+export function formatPublicStat(value: number): string {
+  if (value <= 0) return "0";
+  if (value >= 100) return `${Math.floor(value / 10) * 10}+`;
+  if (value >= 10) return `${value}+`;
+  return String(value);
+}
+
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",

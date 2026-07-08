@@ -1,4 +1,5 @@
 import { paginate, type PaginatedResponse } from "@/lib/api/client";
+import { isMockMode } from "@/lib/config/env";
 import { mockAnalytics, type PlatformAnalytics } from "@/lib/mock/analytics";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type {
@@ -8,8 +9,15 @@ import type {
   StudentWithUser,
   User,
 } from "@/types";
+import {
+  mapCompanyWithUser,
+  mapRoleToBackend,
+  mapStudentWithUser,
+  mapUser,
+  type BackendUser,
+} from "./mappers";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export const adminApi = {
   async getMetrics(): Promise<PlatformMetrics> {
@@ -33,7 +41,23 @@ export const adminApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<PlatformMetrics>("/admin/metrics");
+    const raw = await apiClient<Record<string, unknown>>("/admin/metrics");
+    return {
+      totalStudents: (raw.totalStudents as number) ?? 0,
+      approvedStudents: (raw.approvedStudents as number) ?? 0,
+      pendingStudents: (raw.pendingStudents as number) ?? 0,
+      rejectedStudents: (raw.rejectedStudents as number) ?? 0,
+      totalCompanies: (raw.totalCompanies as number) ?? 0,
+      totalContactRequests: (raw.totalContactRequests as number) ?? 0,
+      requestsByStatus: {
+        pending: (raw.requestsByStatus as Record<string, number>)?.pending ?? 0,
+        accepted: (raw.requestsByStatus as Record<string, number>)?.accepted ?? 0,
+        declined:
+          (raw.requestsByStatus as Record<string, number>)?.declined ??
+          (raw.requestsByStatus as Record<string, number>)?.rejected ??
+          0,
+      },
+    };
   },
 
   async getPendingStudents(): Promise<StudentWithUser[]> {
@@ -48,10 +72,11 @@ export const adminApi = {
         }));
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentWithUser[]>("/admin/students/pending");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/students/pending");
+    return raw.map(mapStudentWithUser);
   },
 
-  async approveStudent(adminId: string, studentId: string): Promise<void> {
+  async approveStudent(_adminId: string, studentId: string): Promise<void> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
@@ -61,7 +86,7 @@ export const adminApi = {
       store.studentProfiles[idx].rejectionReason = undefined;
       store.auditLogs.unshift({
         id: generateId("audit"),
-        adminId,
+        adminId: _adminId,
         action: "approved_student",
         targetType: "student",
         targetId: studentId,
@@ -79,13 +104,14 @@ export const adminApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/students/${studentId}/approve`, {
+    return apiClient<void>(`/admin/students/${studentId}/verify`, {
       method: "POST",
+      body: { status: "VERIFIED" },
     });
   },
 
   async rejectStudent(
-    adminId: string,
+    _adminId: string,
     studentId: string,
     reason: string
   ): Promise<void> {
@@ -98,7 +124,7 @@ export const adminApi = {
       store.studentProfiles[idx].rejectionReason = reason;
       store.auditLogs.unshift({
         id: generateId("audit"),
-        adminId,
+        adminId: _adminId,
         action: "rejected_student",
         targetType: "student",
         targetId: studentId,
@@ -117,9 +143,9 @@ export const adminApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/students/${studentId}/reject`, {
+    return apiClient<void>(`/admin/students/${studentId}/verify`, {
       method: "POST",
-      body: { reason },
+      body: { status: "REJECTED", reason },
     });
   },
 
@@ -143,12 +169,14 @@ export const adminApi = {
     }
     const { apiClient } = await import("./client");
     const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) searchParams.set(key, String(value));
-    });
-    return apiClient<PaginatedResponse<User>>(
-      `/admin/users?${searchParams}`
+    if (params.query) searchParams.set("query", params.query);
+    if (params.role) searchParams.set("role", mapRoleToBackend(params.role as User["role"]));
+    const qs = searchParams.toString();
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/admin/users${qs ? `?${qs}` : ""}`
     );
+    const users = raw.map((u) => mapUser(u as unknown as BackendUser));
+    return paginate(users, params.page ?? 1, params.pageSize ?? 50);
   },
 
   async toggleUserStatus(userId: string, isActive: boolean): Promise<User> {
@@ -161,10 +189,11 @@ export const adminApi = {
       return store.users[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<User>(`/admin/users/${userId}/status`, {
-      method: "PATCH",
-      body: { isActive },
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/admin/users/${userId}/status`,
+      { method: "PATCH", body: { isActive } }
+    );
+    return mapUser(raw as unknown as BackendUser);
   },
 
   async getAuditLogs(params: {
@@ -182,13 +211,20 @@ export const adminApi = {
       return paginate(sorted, page, pageSize);
     }
     const { apiClient } = await import("./client");
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) searchParams.set(key, String(value));
-    });
-    return apiClient<PaginatedResponse<AdminAuditLog>>(
-      `/admin/audit-logs?${searchParams}`
+    const limit = params.pageSize ?? 50;
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/admin/audit-logs?limit=${limit}`
     );
+    const logs: AdminAuditLog[] = raw.map((entry) => ({
+      id: entry.id as string,
+      adminId: (entry.adminId as string) ?? "",
+      action: (entry.action as string) ?? "",
+      targetType: (entry.targetType as AdminAuditLog["targetType"]) ?? "student",
+      targetId: (entry.targetId as string) ?? "",
+      reason: entry.reason as string | undefined,
+      createdAt: String(entry.createdAt ?? new Date().toISOString()),
+    }));
+    return paginate(logs, params.page ?? 1, limit);
   },
 
   async getAllStudents(): Promise<StudentWithUser[]> {
@@ -201,7 +237,8 @@ export const adminApi = {
       }));
     }
     const { apiClient } = await import("./client");
-    return apiClient<StudentWithUser[]>("/admin/students");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/students");
+    return raw.map(mapStudentWithUser);
   },
 
   async getAllCompanies(): Promise<CompanyWithUser[]> {
@@ -214,7 +251,8 @@ export const adminApi = {
       }));
     }
     const { apiClient } = await import("./client");
-    return apiClient<CompanyWithUser[]>("/admin/companies");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/companies");
+    return raw.map(mapCompanyWithUser);
   },
 
   async getAnalytics(): Promise<PlatformAnalytics> {
@@ -223,7 +261,19 @@ export const adminApi = {
       return mockAnalytics;
     }
     const { apiClient } = await import("./client");
-    return apiClient<PlatformAnalytics>("/admin/analytics");
+    const raw = await apiClient<Record<string, unknown>>("/admin/analytics");
+    return {
+      growth: Array.isArray(raw.growth) ? (raw.growth as PlatformAnalytics["growth"]) : [],
+      topSkills: Array.isArray(raw.topSkills)
+        ? (raw.topSkills as PlatformAnalytics["topSkills"])
+        : [],
+      cohortBreakdown: Array.isArray(raw.cohortBreakdown)
+        ? (raw.cohortBreakdown as PlatformAnalytics["cohortBreakdown"])
+        : [],
+      recentActivity: Array.isArray(raw.recentActivity)
+        ? (raw.recentActivity as PlatformAnalytics["recentActivity"])
+        : [],
+    };
   },
 
   async getPendingCompanies(): Promise<CompanyWithUser[]> {
@@ -238,10 +288,11 @@ export const adminApi = {
         }));
     }
     const { apiClient } = await import("./client");
-    return apiClient<CompanyWithUser[]>("/admin/companies/pending");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/companies/pending");
+    return raw.map(mapCompanyWithUser);
   },
 
-  async approveCompany(adminId: string, companyId: string): Promise<void> {
+  async approveCompany(_adminId: string, companyId: string): Promise<void> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
@@ -251,7 +302,7 @@ export const adminApi = {
       store.companyProfiles[idx].rejectionReason = undefined;
       store.auditLogs.unshift({
         id: generateId("audit"),
-        adminId,
+        adminId: _adminId,
         action: "approved_company",
         targetType: "company",
         targetId: companyId,
@@ -260,10 +311,17 @@ export const adminApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/companies/${companyId}/approve`, { method: "POST" });
+    return apiClient<void>(`/admin/companies/${companyId}/verify`, {
+      method: "POST",
+      body: { status: "VERIFIED" },
+    });
   },
 
-  async rejectCompany(adminId: string, companyId: string, reason: string): Promise<void> {
+  async rejectCompany(
+    _adminId: string,
+    companyId: string,
+    reason: string
+  ): Promise<void> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
@@ -273,7 +331,7 @@ export const adminApi = {
       store.companyProfiles[idx].rejectionReason = reason;
       store.auditLogs.unshift({
         id: generateId("audit"),
-        adminId,
+        adminId: _adminId,
         action: "rejected_company",
         targetType: "company",
         targetId: companyId,
@@ -283,9 +341,9 @@ export const adminApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/companies/${companyId}/reject`, {
+    return apiClient<void>(`/admin/companies/${companyId}/verify`, {
       method: "POST",
-      body: { reason },
+      body: { status: "REJECTED", reason },
     });
   },
 
@@ -294,8 +352,8 @@ export const adminApi = {
       await simulateDelay();
       return getStore().contentReports;
     }
-    const { apiClient } = await import("./client");
-    return apiClient<import("@/types").ContentReport[]>("/admin/moderation");
+    // Backend moderation endpoint not yet implemented
+    return [] as import("@/types").ContentReport[];
   },
 
   async resolveReport(reportId: string, status: "resolved" | "dismissed"): Promise<void> {
@@ -306,11 +364,9 @@ export const adminApi = {
       if (idx !== -1) store.contentReports[idx].status = status;
       return;
     }
-    const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/moderation/${reportId}`, {
-      method: "PATCH",
-      body: { status },
-    });
+    // Backend moderation endpoint not yet implemented
+    void reportId;
+    void status;
   },
 
   async getPlatformReport() {

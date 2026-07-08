@@ -1,3 +1,7 @@
+import { env } from "@/lib/config/env";
+import type { BackendAuthResponse } from "./mappers";
+import { mapAuthResponse } from "./mappers";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -27,12 +31,15 @@ export interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   token?: string | null;
+  /** Skip automatic token refresh on 401 */
+  skipRefresh?: boolean;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-
 let authToken: string | null = null;
+let refreshToken: string | null = null;
+let onTokensRefreshed:
+  | ((tokens: { token: string; refreshToken: string }) => void)
+  | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
@@ -42,39 +49,105 @@ export function getAuthToken(): string | null {
   return authToken;
 }
 
+export function setRefreshToken(token: string | null) {
+  refreshToken = token;
+}
+
+export function getRefreshToken(): string | null {
+  return refreshToken;
+}
+
+export function setOnTokensRefreshed(
+  callback: ((tokens: { token: string; refreshToken: string }) => void) | null
+) {
+  onTokensRefreshed = callback;
+}
+
+export function getApiBaseUrl(): string {
+  return env.apiUrl;
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshToken) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${env.apiUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+      credentials: "include",
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = (await res.json()) as BackendAuthResponse;
+        const session = mapAuthResponse(data);
+        authToken = session.token;
+        refreshToken = session.refreshToken ?? null;
+        onTokensRefreshed?.({
+          token: session.token,
+          refreshToken: session.refreshToken ?? "",
+        });
+        return session.token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = "GET", body, headers = {}, token } = options;
+  const { method = "GET", body, headers = {}, token, skipRefresh } = options;
 
-  const config: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    credentials: "include",
+  const makeRequest = async (activeToken: string | null): Promise<Response> => {
+    const config: RequestInit = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      credentials: "include",
+    };
+
+    if (activeToken) {
+      (config.headers as Record<string, string>)["Authorization"] =
+        `Bearer ${activeToken}`;
+    }
+
+    if (body) {
+      config.body = JSON.stringify(body);
+    }
+
+    return fetch(`${env.apiUrl}${endpoint}`, config);
   };
 
-  const activeToken = token ?? authToken;
-  if (activeToken) {
-    (config.headers as Record<string, string>)["Authorization"] =
-      `Bearer ${activeToken}`;
-  }
+  let activeToken = token ?? authToken;
+  let response = await makeRequest(activeToken);
 
-  if (body) {
-    config.body = JSON.stringify(body);
+  if (response.status === 401 && !skipRefresh && refreshToken) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      activeToken = newToken;
+      response = await makeRequest(activeToken);
+    }
   }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    const message =
+      (error as { message?: string | string[] }).message ??
+      "An error occurred";
     throw new ApiError(
-      error.message || "An error occurred",
+      Array.isArray(message) ? message.join(", ") : String(message),
       response.status,
-      error.code
+      (error as { code?: string }).code
     );
   }
 

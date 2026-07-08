@@ -281,7 +281,13 @@ export default function StudentProfilePage() {
         {step === 3 && (
           <Card>
             <CardHeader>
-              <CardTitle>Photo & CV</CardTitle>
+              <CardTitle>
+                Photo & CV{" "}
+                <span className="text-sm font-normal text-muted-foreground">(optional)</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Add a profile photo and resume when you have them — you can skip this step and save without them.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg border border-dashed p-6 text-center">
@@ -348,9 +354,21 @@ export default function StudentProfilePage() {
               </Button>
             )}
             {step < totalSteps ? (
-              <Button type="button" onClick={() => setStep((s) => s + 1)}>
-                Next
-              </Button>
+              <>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save profile
+                </Button>
+                <Button type="button" onClick={() => setStep((s) => s + 1)}>
+                  Next (optional uploads)
+                </Button>
+              </>
             ) : (
               <Button type="submit" disabled={updateMutation.isPending}>
                 {updateMutation.isPending && (

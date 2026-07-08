@@ -93,6 +93,13 @@ export interface Notification {
 export interface AuthSession {
   user: User;
   token: string;
+  refreshToken?: string;
+}
+
+export interface RegisterPendingResponse {
+  message: string;
+  email: string;
+  requiresEmailVerification: boolean;
 }
 
 export interface LoginCredentials {
@@ -252,6 +259,8 @@ export interface ContentReport {
 
 export interface CareerAnalytics {
   profileViews: { week: string; views: number }[];
+  weeklyContactRequests: { week: string; count: number }[];
+  totalContactRequests: number;
   contactRequestRate: number;
   profileCompleteness: number;
   topSkills: string[];
