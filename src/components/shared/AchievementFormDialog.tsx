@@ -17,6 +17,7 @@ import type { Achievement } from "@/types";
 
 const achSchema = z.object({
   title: z.string().min(2),
+  organization: z.string().min(2),
   description: z.string().min(10),
   date: z.string().min(1),
 });
@@ -43,6 +44,7 @@ export function AchievementFormDialog({
     defaultValues: achievement
       ? {
           title: achievement.title,
+          organization: achievement.organization,
           description: achievement.description,
           date: achievement.date,
         }
@@ -53,6 +55,7 @@ export function AchievementFormDialog({
     if (achievement) {
       form.reset({
         title: achievement.title,
+        organization: achievement.organization,
         description: achievement.description,
         date: achievement.date,
       });
@@ -78,6 +81,13 @@ export function AchievementFormDialog({
       <div>
         <Label>Title</Label>
         <Input {...form.register("title")} placeholder="Hackathon Winner" />
+      </div>
+      <div>
+        <Label>Organization</Label>
+        <Input
+          {...form.register("organization")}
+          placeholder="Rwanda Coding Academy"
+        />
       </div>
       <div>
         <Label>Description</Label>

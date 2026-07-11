@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Code2, ExternalLink, FolderKanban, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, isRenderableImageUrl } from "@/lib/utils";
 import type { Project } from "@/types";
 
 const FALLBACK_COVERS = [
@@ -21,7 +21,8 @@ const HEADER_GRADIENTS = [
 ];
 
 export function getProjectCover(project: Project): string {
-  if (project.images?.[0]) return project.images[0];
+  const candidate = project.images?.[0];
+  if (candidate && isRenderableImageUrl(candidate)) return candidate;
   const idx = project.title.charCodeAt(0) % FALLBACK_COVERS.length;
   return FALLBACK_COVERS[idx];
 }
@@ -43,7 +44,9 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const cover = getProjectCover(project);
   const gradient = HEADER_GRADIENTS[project.title.charCodeAt(0) % HEADER_GRADIENTS.length];
-  const hasLinks = project.links.demo || project.links.repo;
+  const links = project.links ?? {};
+  const techStack = project.techStack ?? [];
+  const hasLinks = Boolean(links.demo || links.repo);
 
   return (
     <article
@@ -121,17 +124,17 @@ export function ProjectCard({
           {project.description}
         </p>
 
-        {project.techStack.length > 0 && (
+        {techStack.length > 0 && (
           <div className="mt-4">
             <div className="flex flex-wrap gap-1.5">
-              {project.techStack.slice(0, 4).map((t) => (
+              {techStack.slice(0, 4).map((t) => (
                 <span key={t} className="skill-pill text-[11px]">
                   {t}
                 </span>
               ))}
-              {project.techStack.length > 4 && (
+              {techStack.length > 4 && (
                 <span className="skill-pill-muted skill-pill text-[11px]">
-                  +{project.techStack.length - 4}
+                  +{techStack.length - 4}
                 </span>
               )}
             </div>
@@ -140,9 +143,9 @@ export function ProjectCard({
 
         {hasLinks && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-border/40 pt-4">
-            {project.links.demo && (
+            {links.demo && (
               <a
-                href={project.links.demo}
+                href={links.demo}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 sm:flex-none"
@@ -151,9 +154,9 @@ export function ProjectCard({
                 Live demo
               </a>
             )}
-            {project.links.repo && (
+            {links.repo && (
               <a
-                href={project.links.repo}
+                href={links.repo}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary sm:flex-none"

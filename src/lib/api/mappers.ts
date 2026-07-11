@@ -1,5 +1,7 @@
 import type {
+  Achievement,
   AuthSession,
+  Certification,
   CompanyProfile,
   CompanyWithUser,
   ContactRequest,
@@ -7,12 +9,14 @@ import type {
   ContactRequestWithDetails,
   InterviewInvitation,
   InterviewStatus,
+  Project,
   StudentProfile,
   StudentWithUser,
   User,
   UserRole,
   VerificationStatus,
 } from "@/types";
+import { debugProfile } from "@/lib/debug/profile-debug";
 
 // ─── Backend response shapes (partial) ───────────────────────────────────────
 
@@ -57,6 +61,7 @@ const ROLE_MAP: Record<string, UserRole> = {
 const VERIFICATION_MAP: Record<string, VerificationStatus> = {
   PENDING: "pending",
   VERIFIED: "approved",
+  APPROVED: "approved",
   REJECTED: "rejected",
 };
 
@@ -83,6 +88,9 @@ export function mapRoleToBackend(role: UserRole): string {
 }
 
 export function mapVerificationStatus(status: string): VerificationStatus {
+  const normalized = status.toLowerCase();
+  if (normalized === "approved" || normalized === "verified") return "approved";
+  if (normalized === "rejected") return "rejected";
   return VERIFICATION_MAP[status.toUpperCase()] ?? "pending";
 }
 
@@ -108,6 +116,12 @@ export function mapInterviewStatus(status: string): InterviewStatus {
 function toIso(value: string | Date | undefined): string {
   if (!value) return new Date().toISOString();
   return typeof value === "string" ? value : value.toISOString();
+}
+
+function toDateOnly(value: string | Date | undefined): string {
+  if (!value) return "";
+  const iso = typeof value === "string" ? value : value.toISOString();
+  return iso.slice(0, 10);
 }
 
 // ─── User mappers ────────────────────────────────────────────────────────────
@@ -151,7 +165,16 @@ export function mapStudentProfile(raw: Record<string, unknown>): StudentProfile 
     [firstName, lastName].filter(Boolean).join(" ") ||
     "Student";
 
-  return {
+  const availabilityRaw = raw.availability ?? raw.preferredJobTypes;
+  const availability = Array.isArray(availabilityRaw)
+    ? availabilityRaw
+        .map(String)
+        .filter((value): value is import("@/types").Availability =>
+          ["internship", "freelance", "full-time"].includes(value)
+        )
+    : [];
+
+  const mapped: StudentProfile = {
     userId: (raw.userId as string) ?? "",
     fullName,
     bio: (raw.bio as string) ?? "",
@@ -170,11 +193,35 @@ export function mapStudentProfile(raw: Record<string, unknown>): StudentProfile 
       (raw.verificationStatus as string) ?? "PENDING"
     ),
     rejectionReason: raw.rejectionReason as string | undefined,
-    cohortYear: (raw.cohortYear as number) ?? new Date().getFullYear(),
-    availability: [],
+    cohortYear:
+      typeof raw.cohortYear === "number" && raw.cohortYear >= 2020
+        ? raw.cohortYear
+        : new Date().getFullYear(),
+    availability,
     isVisible: (raw.isVisible as boolean) ?? true,
     updatedAt: toIso(raw.updatedAt as string | Date),
   };
+
+  debugProfile("mapStudentProfile", {
+    raw: {
+      cohortYear: raw.cohortYear,
+      cvUrl: raw.cvUrl,
+      githubUrl: raw.githubUrl,
+      linkedinUrl: raw.linkedinUrl,
+      portfolioUrl: raw.portfolioUrl,
+      preferredJobTypes: raw.preferredJobTypes,
+      availability: raw.availability,
+      links: raw.links,
+    },
+    mapped: {
+      cohortYear: mapped.cohortYear,
+      cvUrl: mapped.cvUrl,
+      links: mapped.links,
+      availability: mapped.availability,
+    },
+  });
+
+  return mapped;
 }
 
 export function mapCompanyProfile(raw: Record<string, unknown>): CompanyProfile {
@@ -317,18 +364,191 @@ export function mapStudentUpdateToBackend(
     body.lastName = parts.slice(1).join(" ") || parts[0];
   }
   if (data.bio !== undefined) body.bio = data.bio;
-  if (data.photoUrl !== undefined) body.avatarUrl = data.photoUrl || undefined;
-  if (data.cvUrl !== undefined) body.cvUrl = data.cvUrl || undefined;
+  if (data.photoUrl !== undefined) body.avatarUrl = data.photoUrl || null;
+  if (data.cvUrl !== undefined) body.cvUrl = data.cvUrl || null;
   if (data.cohortYear !== undefined) body.cohortYear = data.cohortYear;
   if (data.isVisible !== undefined) body.isVisible = data.isVisible;
 
   const links = data.links as Record<string, string | undefined> | undefined;
   if (links) {
-    if (links.github) body.githubUrl = links.github;
-    if (links.linkedin) body.linkedinUrl = links.linkedin;
-    if (links.portfolio) body.portfolioUrl = links.portfolio;
+    body.githubUrl = links.github ? links.github : null;
+    body.linkedinUrl = links.linkedin ? links.linkedin : null;
+    body.portfolioUrl = links.portfolio ? links.portfolio : null;
   }
 
+  if (data.availability !== undefined) {
+    const availability = data.availability as string[];
+    body.preferredJobTypes = availability;
+    body.availabilityStatus =
+      availability.length > 0 ? "AVAILABLE" : "NOT_LOOKING";
+  }
+
+  debugProfile("mapStudentUpdateToBackend", { input: data, output: body });
+
+  return body;
+}
+
+// ─── Job mappers ─────────────────────────────────────────────────────────────
+
+export function mapJobPosting(
+  raw: Record<string, unknown>,
+  companyId?: string
+): import("@/types").JobPosting {
+  const skills = Array.isArray(raw.skills)
+    ? (raw.skills as Array<string | { skill?: { name: string } }>)
+        .map((s) => (typeof s === "string" ? s : s.skill?.name ?? ""))
+        .filter(Boolean)
+    : [];
+
+  const companyProfile = raw.companyProfile as
+    | Record<string, unknown>
+    | undefined;
+
+  return {
+    id: raw.id as string,
+    companyId:
+      companyId ??
+      (raw.companyId as string) ??
+      (companyProfile?.userId as string) ??
+      "",
+    title: (raw.title as string) ?? "",
+    description: (raw.description as string) ?? "",
+    type: (raw.type as import("@/types").JobType) ?? "internship",
+    location: (raw.location as string) ?? "",
+    skills,
+    status: raw.isActive === false || raw.status === "closed" ? "closed" : "open",
+    createdAt: toIso(raw.createdAt as string | Date),
+  };
+}
+
+export function mapJobToBackend(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (data.title !== undefined) body.title = data.title;
+  if (data.description !== undefined) body.description = data.description;
+  if (data.location !== undefined) body.location = data.location;
+  if (data.status !== undefined) body.status = data.status;
+  return body;
+}
+
+// ─── Contract mappers ────────────────────────────────────────────────────────
+
+export function mapContractStatus(
+  status: string
+): import("@/types").ContractStatus {
+  const map: Record<string, import("@/types").ContractStatus> = {
+    DRAFT: "draft",
+    PENDING_STUDENT: "pending_student",
+    PENDING_COMPANY: "pending_company",
+    SIGNED: "signed",
+    DECLINED: "declined",
+    VOID: "void",
+  };
+  return map[status.toUpperCase()] ?? "draft";
+}
+
+export function mapContract(
+  raw: Record<string, unknown>,
+  ids?: { companyId?: string; studentId?: string }
+): import("@/types").Contract {
+  const companyProfile = raw.companyProfile as Record<string, unknown> | undefined;
+  const studentProfile = raw.studentProfile as Record<string, unknown> | undefined;
+
+  const startDateRaw = raw.startDate as string | Date;
+  const startDate = startDateRaw
+    ? toIso(startDateRaw).split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
+  return {
+    id: raw.id as string,
+    companyId:
+      ids?.companyId ??
+      (companyProfile?.userId as string) ??
+      (raw.companyId as string) ??
+      "",
+    studentId:
+      ids?.studentId ??
+      (studentProfile?.userId as string) ??
+      (raw.studentId as string) ??
+      "",
+    jobId: (raw.projectId as string) ?? (raw.jobId as string) ?? undefined,
+    interviewId: (raw.interviewId as string) ?? undefined,
+    title: (raw.title as string) ?? "",
+    role: (raw.role as string) ?? "",
+    startDate,
+    compensation: (raw.compensation as string) ?? "",
+    terms: (raw.terms as string) ?? "",
+    status: mapContractStatus((raw.status as string) ?? "DRAFT"),
+    companySignature: raw.companySignature as
+      | import("@/types").ContractSignature
+      | undefined,
+    studentSignature: raw.studentSignature as
+      | import("@/types").ContractSignature
+      | undefined,
+    createdAt: toIso(raw.createdAt as string | Date),
+    updatedAt: toIso(raw.updatedAt as string | Date),
+  };
+}
+
+export function mapContractWithDetails(
+  raw: Record<string, unknown>,
+  ids?: { companyId?: string; studentId?: string }
+): import("@/types").ContractWithDetails {
+  const contract = mapContract(raw, ids);
+  const result: import("@/types").ContractWithDetails = { ...contract };
+
+  const companyProfile = raw.companyProfile as Record<string, unknown> | undefined;
+  const studentProfile = raw.studentProfile as Record<string, unknown> | undefined;
+  const project = raw.project as Record<string, unknown> | undefined;
+
+  if (companyProfile) {
+    result.company = {
+      ...mapCompanyProfile(companyProfile),
+      user: companyProfile.user
+        ? mapUser(companyProfile.user as BackendUser)
+        : mapUser({
+            id: contract.companyId,
+            email: "",
+            role: "COMPANY",
+            createdAt: new Date(),
+          }),
+    };
+  }
+
+  if (studentProfile) {
+    result.student = {
+      ...mapStudentProfile(studentProfile),
+      user: studentProfile.user
+        ? mapUser(studentProfile.user as BackendUser)
+        : mapUser({
+            id: contract.studentId,
+            email: "",
+            role: "STUDENT",
+            createdAt: new Date(),
+          }),
+    };
+  }
+
+  if (project) {
+    result.job = mapJobPosting(project, contract.companyId);
+  }
+
+  return result;
+}
+
+export function mapContractToBackend(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (data.companyId !== undefined) body.companyId = data.companyId;
+  if (data.studentId !== undefined) body.studentId = data.studentId;
+  if (data.jobId !== undefined) body.jobId = data.jobId;
+  if (data.title !== undefined) body.title = data.title;
+  if (data.role !== undefined) body.role = data.role;
+  if (data.startDate !== undefined) body.startDate = data.startDate;
+  if (data.compensation !== undefined) body.compensation = data.compensation;
+  if (data.terms !== undefined) body.terms = data.terms;
   return body;
 }
 
@@ -365,4 +585,103 @@ export function mapInterview(raw: Record<string, unknown>): InterviewInvitation 
     status: mapInterviewStatus((raw.status as string) ?? "PENDING"),
     createdAt: toIso(raw.createdAt as string | Date),
   };
+}
+
+/** Map backend StudentProject → frontend Project shape. */
+export function mapProject(
+  raw: Record<string, unknown>,
+  studentUserId: string,
+): Project {
+  const nestedLinks = raw.links as { demo?: string; repo?: string } | undefined;
+
+  return {
+    id: String(raw.id ?? ""),
+    studentId: studentUserId,
+    title: String(raw.title ?? ""),
+    description: String(raw.description ?? ""),
+    techStack: Array.isArray(raw.techStack)
+      ? raw.techStack.map(String)
+      : [],
+    links: {
+      demo:
+        (raw.demoUrl as string | undefined) ??
+        nestedLinks?.demo ??
+        undefined,
+      repo:
+        (raw.repoUrl as string | undefined) ??
+        nestedLinks?.repo ??
+        undefined,
+    },
+    images: Array.isArray(raw.images) ? raw.images.map(String) : [],
+    createdAt: toIso(raw.createdAt as string | Date),
+    updatedAt: toIso(raw.updatedAt as string | Date),
+  };
+}
+
+/** Map frontend project payload → backend create/update body. */
+export function mapProjectToBackend(data: {
+  title?: string;
+  description?: string;
+  techStack?: string[];
+  links?: Project["links"];
+  images?: string[];
+}): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+
+  if (data.title !== undefined) body.title = data.title;
+  if (data.description !== undefined) body.description = data.description;
+  if (data.techStack !== undefined) body.techStack = data.techStack;
+  if (data.images !== undefined) body.images = data.images;
+
+  if (data.links !== undefined) {
+    body.demoUrl = data.links.demo ?? null;
+    body.repoUrl = data.links.repo ?? null;
+  }
+
+  return body;
+}
+
+export function mapCertification(
+  raw: Record<string, unknown>,
+  studentUserId: string,
+): Certification {
+  return {
+    id: String(raw.id ?? ""),
+    studentId: studentUserId,
+    title: String(raw.title ?? ""),
+    issuer: String(raw.issuer ?? ""),
+    issueDate: toDateOnly(raw.issueDate as string | Date | undefined),
+    credentialUrl: (raw.credentialUrl as string | undefined) ?? undefined,
+    imageUrl: (raw.imageUrl as string | undefined) ?? undefined,
+  };
+}
+
+export function mapAchievement(
+  raw: Record<string, unknown>,
+  studentUserId: string,
+): Achievement {
+  return {
+    id: String(raw.id ?? ""),
+    studentId: studentUserId,
+    title: String(raw.title ?? ""),
+    organization: String(raw.organization ?? ""),
+    description: String(raw.description ?? ""),
+    date: toDateOnly(raw.date as string | Date | undefined),
+  };
+}
+
+export function mapAchievementToBackend(data: {
+  title?: string;
+  organization?: string;
+  description?: string;
+  date?: string;
+}): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+
+  if (data.title !== undefined) body.title = data.title;
+  if (data.organization !== undefined) body.organization = data.organization;
+  if (data.description !== undefined) body.description = data.description;
+  if (data.date !== undefined) body.date = data.date;
+
+  return body;
 }

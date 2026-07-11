@@ -7,19 +7,41 @@ const USE_MOCK = isMockMode();
 
 export interface ConversationWithParticipant extends Conversation {
   otherUser: User;
+  displayName: string;
   unreadCount: number;
 }
 
-function mapBackendMessage(raw: Record<string, unknown>): Message {
-  return {
-    id: raw.id as string,
-    conversationId: raw.conversationId as string,
-    senderId: raw.senderId as string,
-    recipientId: raw.recipientId as string,
-    body: (raw.body as string) ?? (raw.content as string) ?? "",
-    read: (raw.read as boolean) ?? false,
-    createdAt: String(raw.createdAt ?? new Date().toISOString()),
-  };
+export interface MessageableContact {
+  userId: string;
+  email: string;
+  role: string;
+  displayName: string;
+  lastContactAt: string;
+}
+
+function displayNameFromOtherUser(
+  otherRaw: Record<string, unknown> | undefined,
+  fallbackId: string
+): string {
+  if (!otherRaw) return "User";
+  const companyProfile = otherRaw.companyProfile as
+    | Record<string, unknown>
+    | undefined;
+  const studentProfile = otherRaw.studentProfile as
+    | Record<string, unknown>
+    | undefined;
+  if (companyProfile?.companyName) {
+    return String(companyProfile.companyName);
+  }
+  if (studentProfile) {
+    const name = [studentProfile.firstName, studentProfile.lastName]
+      .filter(Boolean)
+      .join(" ");
+    if (name) return name;
+  }
+  if (otherRaw.displayName) return String(otherRaw.displayName);
+  if (otherRaw.email) return String(otherRaw.email);
+  return fallbackId;
 }
 
 function mapBackendConversation(
@@ -29,6 +51,7 @@ function mapBackendConversation(
   const participantIds = raw.participantIds as string[];
   const otherRaw = raw.otherUser as Record<string, unknown> | undefined;
   const otherId = participantIds.find((id) => id !== userId) ?? "";
+  const displayName = displayNameFromOtherUser(otherRaw, otherId);
 
   return {
     id: raw.id as string,
@@ -44,7 +67,20 @@ function mapBackendConversation(
           createdAt: new Date().toISOString(),
           isActive: true,
         },
+    displayName,
     unreadCount: 0,
+  };
+}
+
+function mapBackendMessage(raw: Record<string, unknown>): Message {
+  return {
+    id: raw.id as string,
+    conversationId: raw.conversationId as string,
+    senderId: raw.senderId as string,
+    recipientId: raw.recipientId as string,
+    body: (raw.body as string) ?? (raw.content as string) ?? "",
+    read: (raw.read as boolean) ?? false,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
   };
 }
 
@@ -61,6 +97,11 @@ export const messagesApi = {
           return {
             ...conv,
             otherUser: store.users.find((u) => u.id === otherId)!,
+            displayName:
+              store.companyProfiles.find((p) => p.userId === otherId)?.companyName ??
+              store.studentProfiles.find((p) => p.userId === otherId)?.fullName ??
+              store.users.find((u) => u.id === otherId)?.email ??
+              "User",
             unreadCount: msgs.filter((m) => m.recipientId === userId && !m.read).length,
           };
         })
@@ -74,6 +115,46 @@ export const messagesApi = {
       `/messages/conversations/${userId}`
     );
     return raw.map((c) => mapBackendConversation(c, userId));
+  },
+
+  async getMessageableContacts(_userId: string): Promise<MessageableContact[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      const seen = new Set<string>();
+      const contacts: MessageableContact[] = [];
+      for (const request of store.contactRequests.filter((r) => r.status === "accepted")) {
+        const otherId =
+          request.companyId === _userId ? request.studentId : request.companyId;
+        if (seen.has(otherId)) continue;
+        seen.add(otherId);
+        const company = store.companyProfiles.find((p) => p.userId === otherId);
+        const student = store.studentProfiles.find((p) => p.userId === otherId);
+        const user = store.users.find((u) => u.id === otherId);
+        contacts.push({
+          userId: otherId,
+          email: user?.email ?? "",
+          role: user?.role ?? "student",
+          displayName: company?.companyName ?? student?.fullName ?? user?.email ?? "User",
+          lastContactAt: request.respondedAt ?? request.createdAt,
+        });
+      }
+      return contacts;
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<
+      Array<{
+        userId: string;
+        email: string;
+        role: string;
+        displayName: string;
+        lastContactAt: string | Date;
+      }>
+    >("/messages/contacts");
+    return raw.map((c) => ({
+      ...c,
+      lastContactAt: String(c.lastContactAt),
+    }));
   },
 
   async getMessages(conversationId: string, userId: string): Promise<Message[]> {
@@ -100,7 +181,7 @@ export const messagesApi = {
   },
 
   async send(
-    conversationId: string,
+    conversationId: string | null,
     _senderId: string,
     recipientId: string,
     body: string
@@ -110,7 +191,7 @@ export const messagesApi = {
       const store = getStore();
       const msg: Message = {
         id: generateId("msg"),
-        conversationId,
+        conversationId: conversationId ?? generateId("conv"),
         senderId: _senderId,
         recipientId,
         body,
@@ -118,7 +199,13 @@ export const messagesApi = {
         createdAt: new Date().toISOString(),
       };
       store.messages.push(msg);
-      const conv = store.conversations.find((c) => c.id === conversationId);
+      const conv = conversationId
+        ? store.conversations.find((c) => c.id === conversationId)
+        : store.conversations.find(
+            (c) =>
+              c.participantIds.includes(_senderId) &&
+              c.participantIds.includes(recipientId)
+          );
       if (conv) {
         conv.lastMessage = body;
         conv.updatedAt = msg.createdAt;

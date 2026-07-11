@@ -1,33 +1,104 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Loader2, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, MessageSquare, Send } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { messagesApi } from "@/lib/api/messages";
+import {
+  messagesApi,
+  type ConversationWithParticipant,
+  type MessageableContact,
+} from "@/lib/api/messages";
 import { cn, formatRelativeDate } from "@/lib/utils";
 
 interface MessagesPanelProps {
   userId: string;
 }
 
+type ThreadItem = {
+  key: string;
+  otherUserId: string;
+  displayName: string;
+  email: string;
+  role: string;
+  conversationId: string | null;
+  lastMessage: string;
+  updatedAt: string;
+  unreadCount: number;
+};
+
+function buildThreads(
+  conversations: ConversationWithParticipant[],
+  contacts: MessageableContact[]
+): ThreadItem[] {
+  const byUserId = new Map<string, ThreadItem>();
+
+  for (const contact of contacts) {
+    byUserId.set(contact.userId, {
+      key: contact.userId,
+      otherUserId: contact.userId,
+      displayName: contact.displayName,
+      email: contact.email,
+      role: contact.role.toLowerCase(),
+      conversationId: null,
+      lastMessage: "",
+      updatedAt: contact.lastContactAt,
+      unreadCount: 0,
+    });
+  }
+
+  for (const conv of conversations) {
+    const existing = byUserId.get(conv.otherUser.id);
+    byUserId.set(conv.otherUser.id, {
+      key: conv.id,
+      otherUserId: conv.otherUser.id,
+      displayName: conv.displayName,
+      email: conv.otherUser.email,
+      role: conv.otherUser.role,
+      conversationId: conv.id,
+      lastMessage: conv.lastMessage,
+      updatedAt: conv.updatedAt,
+      unreadCount: conv.unreadCount,
+    });
+    if (existing && !conv.lastMessage && existing.lastMessage) {
+      byUserId.get(conv.otherUser.id)!.lastMessage = existing.lastMessage;
+    }
+  }
+
+  return Array.from(byUserId.values()).sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+}
+
 export function MessagesPanel({ userId }: MessagesPanelProps) {
   const queryClient = useQueryClient();
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [activeOtherUserId, setActiveOtherUserId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: conversations = [], isLoading } = useQuery({
+  const { data: conversations = [], isLoading: convosLoading } = useQuery({
     queryKey: ["conversations", userId],
     queryFn: () => messagesApi.getConversations(userId),
     enabled: !!userId,
   });
 
-  const activeConv = conversations.find((c) => c.id === activeConvId);
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery({
+    queryKey: ["message-contacts", userId],
+    queryFn: () => messagesApi.getMessageableContacts(userId),
+    enabled: !!userId,
+  });
+
+  const threads = useMemo(
+    () => buildThreads(conversations, contacts),
+    [conversations, contacts]
+  );
+
+  const activeThread = threads.find((t) => t.otherUserId === activeOtherUserId);
+  const activeConvId = activeThread?.conversationId ?? null;
 
   const { data: messages = [], isLoading: msgsLoading } = useQuery({
     queryKey: ["messages", activeConvId, userId],
@@ -38,15 +109,25 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
   const sendMutation = useMutation({
     mutationFn: () =>
       messagesApi.send(
-        activeConvId!,
+        activeConvId,
         userId,
-        activeConv!.otherUser.id,
+        activeThread!.otherUserId,
         draft.trim()
       ),
-    onSuccess: () => {
+    onSuccess: async () => {
       setDraft("");
-      queryClient.invalidateQueries({ queryKey: ["messages", activeConvId] });
-      queryClient.invalidateQueries({ queryKey: ["conversations", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["conversations", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["message-contacts", userId] });
+      if (activeConvId) {
+        queryClient.invalidateQueries({ queryKey: ["messages", activeConvId] });
+      } else {
+        const updated = await messagesApi.getConversations(userId);
+        const match = updated.find((c) => c.otherUser.id === activeOtherUserId);
+        if (match) {
+          setActiveOtherUserId(match.otherUser.id);
+          queryClient.invalidateQueries({ queryKey: ["messages", match.id] });
+        }
+      }
     },
   });
 
@@ -55,18 +136,21 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
   }, [messages]);
 
   useEffect(() => {
-    if (!activeConvId && conversations.length > 0) {
-      setActiveConvId(conversations[0].id);
+    if (!activeOtherUserId && threads.length > 0) {
+      setActiveOtherUserId(threads[0].otherUserId);
     }
-  }, [conversations, activeConvId]);
+  }, [threads, activeOtherUserId]);
+
+  const isLoading = convosLoading || contactsLoading;
 
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
-  if (conversations.length === 0) {
+  if (threads.length === 0) {
     return (
       <EmptyState
+        icon={<MessageSquare className="h-8 w-8" />}
         title="No conversations yet"
-        description="Messages appear here after a contact request is accepted."
+        description="Messaging unlocks after a contact request is accepted. Companies send a request from Find Talent; students accept it under Requests."
       />
     );
   }
@@ -74,37 +158,37 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
   return (
     <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border bg-card">
       <div className="w-72 shrink-0 overflow-y-auto border-r">
-        {conversations.map((conv) => (
+        {threads.map((thread) => (
           <button
-            key={conv.id}
+            key={thread.key}
             type="button"
-            onClick={() => setActiveConvId(conv.id)}
+            onClick={() => setActiveOtherUserId(thread.otherUserId)}
             className={cn(
               "flex w-full items-start gap-3 border-b p-4 text-left transition-colors hover:bg-secondary/50",
-              activeConvId === conv.id && "bg-primary/10"
+              activeOtherUserId === thread.otherUserId && "bg-primary/10"
             )}
           >
             <Avatar className="h-9 w-9">
               <AvatarFallback className="text-xs">
-                {conv.otherUser.email.slice(0, 2).toUpperCase()}
+                {thread.displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-sm font-medium">
-                  {conv.otherUser.email}
+                  {thread.displayName}
                 </span>
-                {conv.unreadCount > 0 && (
+                {thread.unreadCount > 0 && (
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {conv.unreadCount}
+                    {thread.unreadCount}
                   </span>
                 )}
               </div>
               <p className="truncate text-xs text-muted-foreground">
-                {conv.lastMessage}
+                {thread.lastMessage || "Start a conversation"}
               </p>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                {formatRelativeDate(conv.updatedAt)}
+                {formatRelativeDate(thread.updatedAt)}
               </p>
             </div>
           </button>
@@ -112,18 +196,27 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {activeConv ? (
+        {activeThread ? (
           <>
             <div className="border-b px-4 py-3">
-              <p className="font-medium">{activeConv.otherUser.email}</p>
+              <p className="font-medium">{activeThread.displayName}</p>
               <p className="text-xs capitalize text-muted-foreground">
-                {activeConv.otherUser.role}
+                {activeThread.role}
+                {activeThread.email ? ` · ${activeThread.email}` : ""}
               </p>
             </div>
 
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {msgsLoading ? (
+              {!activeConvId ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  Send a message to start chatting with {activeThread.displayName}.
+                </p>
+              ) : msgsLoading ? (
                 <LoadingSkeleton rows={3} />
+              ) : messages.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  No messages yet. Say hello!
+                </p>
               ) : (
                 messages.map((msg) => {
                   const isMine = msg.senderId === userId;

@@ -29,6 +29,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
-EXPOSE 3001
+EXPOSE 3000
 
-CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "3001"]
+CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "3000"]

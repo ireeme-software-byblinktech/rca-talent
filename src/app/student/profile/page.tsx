@@ -1,11 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, FileText, ExternalLink, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,21 +21,33 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { studentsApi } from "@/lib/api/students";
+import { filesApi } from "@/lib/api/files";
+import { debugProfile } from "@/lib/debug/profile-debug";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { COHORT_YEARS, SKILL_OPTIONS } from "@/lib/mock/data";
 import type { Availability } from "@/types";
 
-const profileSchema = z.object({
-  fullName: z.string().min(2, "Name is required"),
-  bio: z.string().min(20, "Bio must be at least 20 characters"),
-  github: z.string().url().optional().or(z.literal("")),
-  linkedin: z.string().url().optional().or(z.literal("")),
-  portfolio: z.string().url().optional().or(z.literal("")),
-  cohortYear: z.number().min(2020).max(2030),
-});
+type ProfileForm = {
+  fullName: string;
+  bio: string;
+  github: string;
+  linkedin: string;
+  portfolio: string;
+  cohortYear: number;
+};
 
-type ProfileForm = z.infer<typeof profileSchema>;
+const defaultCohortYear = COHORT_YEARS[COHORT_YEARS.length - 1];
+
+function isValidHttpUrl(value: string): boolean {
+  if (!value.trim()) return true;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const AVAILABILITY_OPTIONS: Availability[] = ["internship", "freelance", "full-time"];
 
@@ -49,6 +59,12 @@ export default function StudentProfilePage() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>();
+  const [cvUrl, setCvUrl] = useState<string | undefined>();
+  const [photoPreview, setPhotoPreview] = useState<string | undefined>();
+  const [photoPreviewError, setPhotoPreviewError] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile", user?.id],
@@ -57,7 +73,6 @@ export default function StudentProfilePage() {
   });
 
   const form = useForm<ProfileForm>({
-    resolver: zodResolver(profileSchema),
     values: profile
       ? {
           fullName: profile.fullName,
@@ -65,7 +80,8 @@ export default function StudentProfilePage() {
           github: profile.links.github ?? "",
           linkedin: profile.links.linkedin ?? "",
           portfolio: profile.links.portfolio ?? "",
-          cohortYear: profile.cohortYear,
+          cohortYear:
+            profile.cohortYear >= 2020 ? profile.cohortYear : defaultCohortYear,
         }
       : undefined,
   });
@@ -74,8 +90,15 @@ export default function StudentProfilePage() {
     if (profile) {
       setSelectedSkills(profile.skills);
       setAvailability(profile.availability);
+      setPhotoUrl(profile.photoUrl);
+      setPhotoPreview(profile.photoUrl);
+      setPhotoPreviewError(false);
+      setCvUrl(profile.cvUrl);
+      if (!profile.cohortYear || profile.cohortYear < 2020) {
+        form.setValue("cohortYear", defaultCohortYear);
+      }
     }
-  }, [profile]);
+  }, [profile, form]);
 
   const updateMutation = useMutation({
     mutationFn: (data: Parameters<typeof studentsApi.updateProfile>[1]) =>
@@ -101,39 +124,123 @@ export default function StudentProfilePage() {
     },
   });
 
-  const onSubmit = (data: ProfileForm) => {
-    updateMutation.mutate({
-      fullName: data.fullName,
-      bio: data.bio,
-      skills: selectedSkills,
-      links: {
-        github: data.github || undefined,
-        linkedin: data.linkedin || undefined,
-        portfolio: data.portfolio || undefined,
-      },
-      cohortYear: data.cohortYear,
-      availability,
-    });
+  const buildPayload = (data: ProfileForm) => ({
+    fullName: data.fullName.trim(),
+    bio: data.bio.trim(),
+    skills: selectedSkills,
+    links: {
+      github: data.github.trim(),
+      linkedin: data.linkedin.trim(),
+      portfolio: data.portfolio.trim(),
+    },
+    cohortYear: Number(data.cohortYear) || defaultCohortYear,
+    availability,
+    photoUrl,
+    cvUrl,
+  });
+
+  const validateAndSave = () => {
+    const data = form.getValues();
+
+    if (!data.fullName?.trim() || data.fullName.trim().length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Could not save",
+        description: "Enter your full name on step 1.",
+      });
+      setStep(1);
+      return;
+    }
+
+    if (!data.bio?.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Could not save",
+        description: "Enter your bio on step 1.",
+      });
+      setStep(1);
+      return;
+    }
+
+    const linkChecks = [
+      ["GitHub", data.github],
+      ["LinkedIn", data.linkedin],
+      ["Portfolio", data.portfolio],
+    ] as const;
+
+    for (const [label, url] of linkChecks) {
+      if (!isValidHttpUrl(url)) {
+        toast({
+          variant: "destructive",
+          title: "Could not save",
+          description: `${label} must be a valid http(s) URL or left empty.`,
+        });
+        setStep(2);
+        return;
+      }
+    }
+
+    const payload = buildPayload(data);
+    debugProfile("profile page save", payload);
+    updateMutation.mutate(payload);
   };
 
-  const mockUpload = (type: "photo" | "cv") => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((p) => {
-        if (p === null || p >= 100) {
-          clearInterval(interval);
-          setUploadProgress(null);
-          toast({ title: "Upload complete", description: `Mock ${type} upload successful.` });
-          if (type === "cv") {
-            updateMutation.mutate({ cvUrl: `/mock/cv-${user?.id}.pdf` });
-          } else {
-            updateMutation.mutate({ photoUrl: `/mock/photo-${user?.id}.jpg` });
-          }
-          return null;
-        }
-        return p + 20;
+  const handleFileUpload = async (type: "photo" | "cv", file: File) => {
+    const localPreview = type === "photo" ? URL.createObjectURL(file) : undefined;
+    if (localPreview) {
+      setPhotoPreview(localPreview);
+      setPhotoPreviewError(false);
+    }
+
+    setUploadProgress(10);
+    try {
+      const uploaded =
+        type === "photo"
+          ? await filesApi.uploadProfilePhoto(file)
+          : await filesApi.uploadResume(file);
+      setUploadProgress(100);
+      const uploadedUrl = uploaded.url;
+      if (type === "photo") {
+        setPhotoUrl(uploadedUrl);
+        setPhotoPreview(uploadedUrl);
+        setPhotoPreviewError(false);
+      } else {
+        setCvUrl(uploadedUrl);
+      }
+      await updateMutation.mutateAsync(
+        type === "photo"
+          ? { photoUrl: uploadedUrl }
+          : { cvUrl: uploadedUrl }
+      );
+      toast({
+        title: "Upload complete",
+        description: `${type === "photo" ? "Profile photo" : "CV"} saved to your profile.`,
       });
-    }, 200);
+    } catch (err) {
+      if (localPreview) {
+        URL.revokeObjectURL(localPreview);
+        setPhotoPreview(photoUrl);
+      }
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Could not upload file",
+      });
+    } finally {
+      setUploadProgress(null);
+    }
+  };
+
+  const onPhotoSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void handleFileUpload("photo", file);
+    event.target.value = "";
+  };
+
+  const onCvSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void handleFileUpload("cv", file);
+    event.target.value = "";
   };
 
   const toggleSkill = (skill: string) => {
@@ -151,6 +258,7 @@ export default function StudentProfilePage() {
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
   const totalSteps = 3;
+  const cvFileName = cvUrl ? decodeURIComponent(cvUrl.split("/").pop() ?? "resume") : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -183,7 +291,12 @@ export default function StudentProfilePage() {
         ))}
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          validateAndSave();
+        }}
+      >
         {step === 1 && (
           <Card>
             <CardHeader>
@@ -207,8 +320,8 @@ export default function StudentProfilePage() {
               <div className="space-y-2">
                 <Label>Cohort year</Label>
                 <Select
-                  value={String(form.watch("cohortYear"))}
-                  onValueChange={(v) => form.setValue("cohortYear", Number(v))}
+                  value={String(form.watch("cohortYear") || defaultCohortYear)}
+                  onValueChange={(v) => form.setValue("cohortYear", Number(v), { shouldDirty: true })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -261,6 +374,9 @@ export default function StudentProfilePage() {
                     </Badge>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {selectedSkills.length} selected — click Save profile to keep your skills.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="github">GitHub</Label>
@@ -291,37 +407,85 @@ export default function StudentProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg border border-dashed p-6 text-center">
-                <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                {photoPreview && !photoPreviewError ? (
+                  <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoPreview}
+                      alt="Profile photo preview"
+                      className="h-full w-full object-cover"
+                      onError={() => setPhotoPreviewError(true)}
+                    />
+                  </div>
+                ) : photoUrl || photoPreview ? (
+                  <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-full border bg-muted text-muted-foreground">
+                    <User className="h-10 w-10" />
+                  </div>
+                ) : (
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                )}
                 <p className="mt-2 text-sm font-medium">Profile photo</p>
-                <p className="text-xs text-muted-foreground">Mock upload — JPG or PNG</p>
-                {profile?.photoUrl && (
+                <p className="text-xs text-muted-foreground">JPG, PNG, or WEBP up to 2MB</p>
+                {photoUrl && (
                   <p className="mt-2 text-xs text-brand">✓ Photo uploaded</p>
                 )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={onPhotoSelected}
+                />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="mt-3"
-                  onClick={() => mockUpload("photo")}
-                  disabled={uploadProgress !== null}
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadProgress !== null || updateMutation.isPending}
                 >
                   Upload photo
                 </Button>
               </div>
               <div className="rounded-lg border border-dashed p-6 text-center">
-                <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                {cvUrl ? (
+                  <div className="mx-auto mb-4 flex max-w-xs items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-left">
+                    <FileText className="h-8 w-8 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{cvFileName}</p>
+                      <a
+                        href={cvUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        View uploaded CV
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                )}
                 <p className="mt-2 text-sm font-medium">CV / Resume</p>
-                <p className="text-xs text-muted-foreground">Mock upload — PDF</p>
-                {profile?.cvUrl && (
+                <p className="text-xs text-muted-foreground">PDF, DOC, or DOCX up to 5MB</p>
+                {cvUrl && (
                   <p className="mt-2 text-xs text-brand">✓ CV uploaded</p>
                 )}
+                <input
+                  ref={cvInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={onCvSelected}
+                />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="mt-3"
-                  onClick={() => mockUpload("cv")}
-                  disabled={uploadProgress !== null}
+                  onClick={() => cvInputRef.current?.click()}
+                  disabled={uploadProgress !== null || updateMutation.isPending}
                 >
                   Upload CV
                 </Button>

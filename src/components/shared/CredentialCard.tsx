@@ -129,9 +129,16 @@ export function AchievementCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
-              {achievement.title}
-            </h3>
+            <div className="min-w-0">
+              <h3 className="font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+                {achievement.title}
+              </h3>
+              {achievement.organization && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {achievement.organization}
+                </p>
+              )}
+            </div>
             {!readOnly && (onEdit || onDelete) && (
               <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                 {onEdit && (

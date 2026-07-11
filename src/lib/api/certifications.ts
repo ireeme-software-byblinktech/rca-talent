@@ -1,3 +1,8 @@
+import {
+  mapAchievement,
+  mapAchievementToBackend,
+  mapCertification,
+} from "@/lib/api/mappers";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
 import type { Achievement, Certification } from "@/types";
 
@@ -10,7 +15,10 @@ export const certificationsApi = {
       return getStore().certifications.filter((c) => c.studentId === studentId);
     }
     const { apiClient } = await import("./client");
-    return apiClient<Certification[]>(`/students/${studentId}/certifications`);
+    const rows = await apiClient<Record<string, unknown>[]>(
+      `/students/${studentId}/certifications`,
+    );
+    return rows.map((row) => mapCertification(row, studentId));
   },
 
   async create(
@@ -24,10 +32,14 @@ export const certificationsApi = {
       return cert;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Certification>(`/students/${studentId}/certifications`, {
-      method: "POST",
-      body: data,
-    });
+    const row = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/certifications`,
+      {
+        method: "POST",
+        body: data,
+      },
+    );
+    return mapCertification(row, studentId);
   },
 
   async delete(studentId: string, certId: string): Promise<void> {
@@ -61,10 +73,14 @@ export const certificationsApi = {
       return store.certifications[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Certification>(`/students/${studentId}/certifications/${certId}`, {
-      method: "PATCH",
-      body: data,
-    });
+    const row = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/certifications/${certId}`,
+      {
+        method: "PATCH",
+        body: data,
+      },
+    );
+    return mapCertification(row, studentId);
   },
 
   async getAchievements(studentId: string): Promise<Achievement[]> {
@@ -73,7 +89,10 @@ export const certificationsApi = {
       return getStore().achievements.filter((a) => a.studentId === studentId);
     }
     const { apiClient } = await import("./client");
-    return apiClient<Achievement[]>(`/students/${studentId}/achievements`);
+    const rows = await apiClient<Record<string, unknown>[]>(
+      `/students/${studentId}/achievements`,
+    );
+    return rows.map((row) => mapAchievement(row, studentId));
   },
 
   async createAchievement(
@@ -87,10 +106,14 @@ export const certificationsApi = {
       return ach;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Achievement>(`/students/${studentId}/achievements`, {
-      method: "POST",
-      body: data,
-    });
+    const row = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/achievements`,
+      {
+        method: "POST",
+        body: mapAchievementToBackend(data),
+      },
+    );
+    return mapAchievement(row, studentId);
   },
 
   async deleteAchievement(studentId: string, achId: string): Promise<void> {
@@ -124,9 +147,13 @@ export const certificationsApi = {
       return store.achievements[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Achievement>(`/students/${studentId}/achievements/${achId}`, {
-      method: "PATCH",
-      body: data,
-    });
+    const row = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/achievements/${achId}`,
+      {
+        method: "PATCH",
+        body: mapAchievementToBackend(data),
+      },
+    );
+    return mapAchievement(row, studentId);
   },
 };

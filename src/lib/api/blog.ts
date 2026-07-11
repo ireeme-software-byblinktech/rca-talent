@@ -58,7 +58,8 @@ export const blogApi = {
       );
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost[]>("/admin/blog");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/blog");
+    return raw.map((post) => mapBlogPost(post));
   },
 
   async getBySlug(slug: string): Promise<BlogPost | null> {
@@ -96,7 +97,11 @@ export const blogApi = {
       return post;
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost>("/admin/blog", { method: "POST", body: data });
+    const raw = await apiClient<Record<string, unknown>>("/admin/blog", {
+      method: "POST",
+      body: data,
+    });
+    return mapBlogPost(raw);
   },
 
   async update(id: string, data: Partial<CreateBlogPostData>): Promise<BlogPost> {
@@ -113,10 +118,11 @@ export const blogApi = {
       return store.blogPosts[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost>(`/admin/blog/${id}`, {
+    const raw = await apiClient<Record<string, unknown>>(`/admin/blog/${id}`, {
       method: "PATCH",
       body: data,
     });
+    return mapBlogPost(raw);
   },
 
   async delete(id: string): Promise<void> {

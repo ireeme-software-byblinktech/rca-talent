@@ -327,7 +327,7 @@ export const INDUSTRY_OPTIONS = [
   "Other",
 ];
 
-export const COHORT_YEARS = [2022, 2023, 2024, 2025];
+export const COHORT_YEARS = [2022, 2023, 2024, 2025, 2026];
 
 export const mockCertifications: Certification[] = [
   {
@@ -356,6 +356,7 @@ export const mockAchievements: Achievement[] = [
     id: "ach-1",
     studentId: "user-student-1",
     title: "RCA Hackathon Winner 2023",
+    organization: "Rwanda Coding Academy",
     description: "First place for AgriConnect prototype at RCA annual hackathon.",
     date: "2023-12-01",
   },
@@ -363,6 +364,7 @@ export const mockAchievements: Achievement[] = [
     id: "ach-2",
     studentId: "user-student-1",
     title: "Dean's List",
+    organization: "Rwanda Coding Academy",
     description: "Academic excellence award for 2023 cohort.",
     date: "2023-06-15",
   },

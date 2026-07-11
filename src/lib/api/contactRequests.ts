@@ -14,6 +14,13 @@ export interface CreateContactRequestData {
   message: string;
 }
 
+export interface AcceptedCandidate {
+  requestId: string;
+  userId: string;
+  fullName: string;
+  cohortYear: number;
+}
+
 function enrichRequest(
   request: ContactRequest,
   store: ReturnType<typeof getStore>
@@ -56,6 +63,28 @@ export const contactRequestsApi = {
       "/contact-requests/received/me"
     );
     return raw.map((r) => mapContactRequestWithDetails(r));
+  },
+
+  async getAcceptedCandidates(_companyId: string): Promise<AcceptedCandidate[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      return store.contactRequests
+        .filter((r) => r.companyId === _companyId && r.status === "accepted")
+        .map((r) => {
+          const profile = store.studentProfiles.find(
+            (p) => p.userId === r.studentId
+          );
+          return {
+            requestId: r.id,
+            userId: r.studentId,
+            fullName: profile?.fullName ?? "Student",
+            cohortYear: profile?.cohortYear ?? new Date().getFullYear(),
+          };
+        });
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<AcceptedCandidate[]>("/contact-requests/candidates");
   },
 
   async getForCompany(companyId: string): Promise<ContactRequestWithDetails[]> {

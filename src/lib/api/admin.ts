@@ -48,6 +48,7 @@ export const adminApi = {
       pendingStudents: (raw.pendingStudents as number) ?? 0,
       rejectedStudents: (raw.rejectedStudents as number) ?? 0,
       totalCompanies: (raw.totalCompanies as number) ?? 0,
+      pendingCompanies: (raw.pendingCompanies as number) ?? 0,
       totalContactRequests: (raw.totalContactRequests as number) ?? 0,
       requestsByStatus: {
         pending: (raw.requestsByStatus as Record<string, number>)?.pending ?? 0,
@@ -60,20 +61,85 @@ export const adminApi = {
     };
   },
 
-  async getPendingStudents(): Promise<StudentWithUser[]> {
+  async getPendingStudents(params?: {
+    query?: string;
+    page?: number;
+    pageSize?: number;
+    cohortYear?: number;
+  }): Promise<PaginatedResponse<StudentWithUser>> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
-      return store.studentProfiles
+      const { query, cohortYear, page = 1, pageSize = 25 } = params ?? {};
+      let results = store.studentProfiles
         .filter((p) => p.verificationStatus === "pending")
         .map((profile) => ({
           ...profile,
           user: store.users.find((u) => u.id === profile.userId)!,
         }));
+      if (cohortYear) {
+        results = results.filter((s) => s.cohortYear === cohortYear);
+      }
+      if (query) {
+        const q = query.toLowerCase();
+        results = results.filter(
+          (s) =>
+            s.fullName.toLowerCase().includes(q) ||
+            s.user.email.toLowerCase().includes(q) ||
+            s.skills.some((sk) => sk.toLowerCase().includes(q))
+        );
+      }
+      const mapped = results.map((p) => ({
+        ...p,
+        id: p.userId,
+      }));
+      return paginate(mapped, page, pageSize);
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/admin/students/pending");
-    return raw.map(mapStudentWithUser);
+    const searchParams = new URLSearchParams();
+    if (params?.query) searchParams.set("query", params.query);
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.pageSize) searchParams.set("pageSize", String(params.pageSize));
+    if (params?.cohortYear) searchParams.set("cohortYear", String(params.cohortYear));
+    const qs = searchParams.toString();
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 25;
+    const raw = await apiClient<
+      | Record<string, unknown>[]
+      | {
+          data: Record<string, unknown>[];
+          total: number;
+          page: number;
+          pageSize: number;
+          totalPages: number;
+        }
+    >(`/admin/students/pending${qs ? `?${qs}` : ""}`);
+
+    if (Array.isArray(raw)) {
+      let results = raw.map(mapStudentWithUser);
+      if (params?.cohortYear) {
+        results = results.filter((s) => s.cohortYear === params.cohortYear);
+      }
+      if (params?.query) {
+        const q = params.query.toLowerCase();
+        results = results.filter(
+          (s) =>
+            s.fullName.toLowerCase().includes(q) ||
+            s.user.email.toLowerCase().includes(q) ||
+            s.bio.toLowerCase().includes(q) ||
+            s.skills.some((sk) => sk.toLowerCase().includes(q))
+        );
+      }
+      return paginate(results, page, pageSize);
+    }
+
+    return {
+      data: raw.data.map(mapStudentWithUser),
+      total: raw.total,
+      page: raw.page,
+      pageSize: raw.pageSize,
+      totalPages: raw.totalPages,
+    };
   },
 
   async approveStudent(_adminId: string, studentId: string): Promise<void> {
@@ -276,20 +342,89 @@ export const adminApi = {
     };
   },
 
-  async getPendingCompanies(): Promise<CompanyWithUser[]> {
+  async getPendingCompanies(params?: {
+    query?: string;
+    page?: number;
+    pageSize?: number;
+    industry?: string;
+  }): Promise<PaginatedResponse<CompanyWithUser>> {
     if (USE_MOCK) {
       await simulateDelay();
       const store = getStore();
-      return store.companyProfiles
+      const { query, industry, page = 1, pageSize = 25 } = params ?? {};
+      let results = store.companyProfiles
         .filter((p) => p.verificationStatus === "pending")
         .map((profile) => ({
           ...profile,
           user: store.users.find((u) => u.id === profile.userId)!,
         }));
+      if (industry) {
+        results = results.filter(
+          (c) => c.industry.toLowerCase() === industry.toLowerCase()
+        );
+      }
+      if (query) {
+        const q = query.toLowerCase();
+        results = results.filter(
+          (c) =>
+            c.companyName.toLowerCase().includes(q) ||
+            c.user.email.toLowerCase().includes(q) ||
+            c.industry.toLowerCase().includes(q) ||
+            c.description.toLowerCase().includes(q)
+        );
+      }
+      const mapped = results.map((p) => ({
+        ...p,
+        id: p.userId,
+      }));
+      return paginate(mapped, page, pageSize);
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/admin/companies/pending");
-    return raw.map(mapCompanyWithUser);
+    const searchParams = new URLSearchParams();
+    if (params?.query) searchParams.set("query", params.query);
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.pageSize) searchParams.set("pageSize", String(params.pageSize));
+    if (params?.industry) searchParams.set("industry", params.industry);
+    const qs = searchParams.toString();
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 25;
+    const raw = await apiClient<
+      | Record<string, unknown>[]
+      | {
+          data: Record<string, unknown>[];
+          total: number;
+          page: number;
+          pageSize: number;
+          totalPages: number;
+        }
+    >(`/admin/companies/pending${qs ? `?${qs}` : ""}`);
+
+    if (Array.isArray(raw)) {
+      let results = raw.map(mapCompanyWithUser);
+      if (params?.industry) {
+        const ind = params.industry.toLowerCase();
+        results = results.filter((c) => c.industry.toLowerCase().includes(ind));
+      }
+      if (params?.query) {
+        const q = params.query.toLowerCase();
+        results = results.filter(
+          (c) =>
+            c.companyName.toLowerCase().includes(q) ||
+            c.user.email.toLowerCase().includes(q) ||
+            c.industry.toLowerCase().includes(q) ||
+            c.description.toLowerCase().includes(q)
+        );
+      }
+      return paginate(results, page, pageSize);
+    }
+
+    return {
+      data: raw.data.map(mapCompanyWithUser),
+      total: raw.total,
+      page: raw.page,
+      pageSize: raw.pageSize,
+      totalPages: raw.totalPages,
+    };
   },
 
   async approveCompany(_adminId: string, companyId: string): Promise<void> {

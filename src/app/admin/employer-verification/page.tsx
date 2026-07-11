@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Check, ExternalLink, Search, X } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,74 +21,108 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminPageHero } from "@/components/admin/AdminPageHero";
 import { VerificationChecklist } from "@/components/admin/VerificationChecklist";
-import { VerificationQueueCard } from "@/components/admin/VerificationQueueCard";
 import {
   VerificationDetailSection,
   VerificationReviewPanel,
 } from "@/components/admin/VerificationReviewPanel";
+import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { adminApi } from "@/lib/api/admin";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
+import { cn, formatRelativeDate } from "@/lib/utils";
 import {
   getCompanyChecklist,
   getCompanyCompleteness,
 } from "@/lib/verification-utils";
+import type { CompanyWithUser } from "@/types";
+
+type QueueRow = CompanyWithUser & { id: string };
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 export default function AdminEmployerVerificationPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const [reviewCompany, setReviewCompany] = useState<CompanyWithUser | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [showReject, setShowReject] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const { data: pending = [], isLoading } = useQuery({
-    queryKey: ["admin-pending-companies"],
-    queryFn: () => adminApi.getPendingCompanies(),
-    refetchOnWindowFocus: true,
-  });
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return pending;
-    return pending.filter(
-      (c) =>
-        c.companyName.toLowerCase().includes(q) ||
-        c.user.email.toLowerCase().includes(q) ||
-        c.industry.toLowerCase().includes(q)
-    );
-  }, [pending, search]);
-
-  const selected = useMemo(() => {
-    if (filtered.length === 0) return null;
-    if (selectedId) {
-      return filtered.find((c) => c.userId === selectedId) ?? filtered[0];
-    }
-    return filtered[0];
-  }, [filtered, selectedId]);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   useEffect(() => {
-    if (filtered.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    if (selectedId && !filtered.some((c) => c.userId === selectedId)) {
-      setSelectedId(filtered[0].userId);
-    }
-  }, [filtered, selectedId]);
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data: metrics } = useQuery({
+    queryKey: ["admin-metrics"],
+    queryFn: () => adminApi.getMetrics(),
+  });
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: [
+      "admin-pending-companies",
+      searchQuery,
+      industryFilter,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      adminApi.getPendingCompanies({
+        query: searchQuery || undefined,
+        industry: industryFilter !== "all" ? industryFilter : undefined,
+        page,
+        pageSize,
+      }),
+    placeholderData: (prev) => prev,
+  });
+
+  const rows: QueueRow[] = useMemo(
+    () =>
+      (data?.data ?? []).map((company) => ({
+        ...company,
+        id: company.userId,
+      })),
+    [data?.data]
+  );
+
+  const industryOptions = useMemo(() => {
+    const industries = new Set(
+      rows.map((c) => c.industry.trim()).filter(Boolean)
+    );
+    return Array.from(industries).sort();
+  }, [rows]);
 
   const approveMutation = useMutation({
     mutationFn: (companyId: string) => adminApi.approveCompany(user!.id, companyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
-      toast({ title: "Employer approved", description: "Company can now post jobs and contact students." });
-      setSelectedId(null);
+      toast({
+        title: "Employer approved",
+        description: "Company can now post jobs and contact students.",
+      });
+      setReviewCompany(null);
     },
   });
 
@@ -91,209 +133,386 @@ export default function AdminEmployerVerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Employer rejected" });
-      setShowReject(false);
-      setSelectedId(null);
+      setShowRejectDialog(false);
+      setReviewCompany(null);
       setRejectReason("");
     },
   });
 
-  const avgCompleteness = useMemo(() => {
-    if (pending.length === 0) return 0;
-    const total = pending.reduce((sum, c) => sum + getCompanyCompleteness(c), 0);
-    return Math.round(total / pending.length);
-  }, [pending]);
-
-  if (isLoading) return <LoadingSkeleton rows={4} />;
-
-  const checklist = selected ? getCompanyChecklist(selected) : [];
+  const checklist = reviewCompany ? getCompanyChecklist(reviewCompany) : [];
   const metCount = checklist.filter((c) => c.met).length;
   const canApprove = checklist.length > 0 && metCount >= 4;
   const missingItems = checklist.filter((c) => !c.met).map((c) => c.label);
+
+  const columns: Column<QueueRow>[] = useMemo(
+    () => [
+      {
+        key: "company",
+        header: "Company",
+        sortable: true,
+        sortValue: (row) => row.companyName,
+        exportValue: (row) => row.companyName,
+        cell: (row) => (
+          <div>
+            <p className="font-semibold text-foreground">{row.companyName}</p>
+            <p className="text-xs text-muted-foreground">{row.user.email}</p>
+          </div>
+        ),
+      },
+      {
+        key: "industry",
+        header: "Industry",
+        sortable: true,
+        sortValue: (row) => row.industry,
+        exportValue: (row) => row.industry,
+        cell: (row) => (
+          <span className="text-sm text-muted-foreground">
+            {row.industry || "—"}
+          </span>
+        ),
+      },
+      {
+        key: "completeness",
+        header: "Completeness",
+        sortable: true,
+        sortValue: (row) => getCompanyCompleteness(row),
+        exportValue: (row) => `${getCompanyCompleteness(row)}%`,
+        cell: (row) => {
+          const score = getCompanyCompleteness(row);
+          return (
+            <span
+              className={cn(
+                "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                score >= 80
+                  ? "bg-emerald-500/10 text-emerald-700"
+                  : score >= 50
+                    ? "bg-amber-500/10 text-amber-700"
+                    : "bg-muted text-muted-foreground"
+              )}
+            >
+              {score}%
+            </span>
+          );
+        },
+      },
+      {
+        key: "website",
+        header: "Website",
+        exportValue: (row) => row.website ?? "",
+        cell: (row) =>
+          row.website ? (
+            <a
+              href={row.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              Link <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          ),
+      },
+      {
+        key: "submitted",
+        header: "Updated",
+        sortable: true,
+        sortValue: (row) => row.updatedAt,
+        exportValue: (row) => row.updatedAt,
+        cell: (row) => (
+          <span className="text-sm text-muted-foreground">
+            {formatRelativeDate(row.updatedAt)}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        header: "",
+        cell: (row) => (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-full"
+            onClick={() => setReviewCompany(row)}
+          >
+            Review
+          </Button>
+        ),
+      },
+    ],
+    []
+  );
+
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
+
+  if (isLoading && !data) return <LoadingSkeleton rows={4} />;
 
   return (
     <div className="space-y-6">
       <AdminPageHero
         title="Employer Verification"
-        description="Validate company registrations before granting access to search talent and post jobs."
+        description="Search and review pending company registrations in a paginated queue — built to scale to thousands of applications."
         icon={Building2}
         metrics={[
-          { label: "Pending registrations", value: pending.length, tone: "text-amber-600" },
-          { label: "Avg. completeness", value: `${avgCompleteness}%`, tone: "text-primary" },
           {
-            label: "Ready to approve",
-            value: pending.filter((c) => getCompanyCompleteness(c) >= 80).length,
+            label: "Pending total",
+            value: metrics?.pendingCompanies ?? total,
+            tone: "text-amber-600",
+          },
+          {
+            label: "This page",
+            value: rows.length,
+            tone: "text-primary",
+          },
+          {
+            label: "Ready (this page)",
+            value: rows.filter((c) => getCompanyCompleteness(c) >= 80).length,
             tone: "text-emerald-600",
           },
         ]}
       />
 
-      {pending.length === 0 ? (
-        <EmptyState
-          icon={<Building2 className="h-10 w-10" />}
-          title="No pending employers"
-          description="All company accounts have been reviewed. New registrations will appear here."
-        />
-      ) : (
-        <div className="grid gap-6 xl:grid-cols-5">
-          <div className="space-y-4 xl:col-span-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              Review queue
-              <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700">
-                {filtered.length}
-              </span>
-            </h2>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by company, email, or industry..."
-                className="rounded-xl border-0 bg-secondary pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2.5">
-              {filtered.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
-                  No matches for &ldquo;{search}&rdquo;
-                </p>
-              ) : (
-                filtered.map((company) => (
-                  <VerificationQueueCard
-                    key={company.userId}
-                    variant="company"
-                    title={company.companyName}
-                    subtitle={`${company.user.email} · ${company.industry}`}
-                    badges={[company.industry]}
-                    submittedAt={company.updatedAt}
-                    completeness={getCompanyCompleteness(company)}
-                    selected={selected?.userId === company.userId}
-                    onClick={() => setSelectedId(company.userId)}
-                  />
-                ))
-              )}
-            </div>
+      <div className="fancy-card space-y-4 rounded-2xl border border-border/50 p-4 !translate-y-0 !shadow-card">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search company, email, industry, or description..."
+              className="rounded-xl border-0 bg-secondary pl-9"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
           </div>
+          <Select
+            value={industryFilter}
+            onValueChange={(v) => {
+              setIndustryFilter(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full rounded-xl lg:w-44">
+              <SelectValue placeholder="All industries" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All industries</SelectItem>
+              {industryOptions.map((industry) => (
+                <SelectItem key={industry} value={industry}>
+                  {industry}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => {
+              setPageSize(Number(v));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full rounded-xl lg:w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n} per page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="xl:col-span-3">
+        {total === 0 ? (
+          <EmptyState
+            icon={<Building2 className="h-10 w-10" />}
+            title="No pending employers"
+            description={
+              searchQuery || industryFilter !== "all"
+                ? "No pending companies match your filters."
+                : "All company accounts have been reviewed. New registrations will appear here."
+            }
+          />
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Showing{" "}
+                <span className="font-semibold text-foreground">
+                  {rangeStart}–{rangeEnd}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-foreground">{total}</span>{" "}
+                pending
+                {isFetching && (
+                  <span className="ml-2 text-xs text-primary">Updating…</span>
+                )}
+              </span>
+            </div>
+
+            <DataTable
+              columns={columns}
+              data={rows}
+              pageSize={rows.length || 1}
+              exportable
+              emptyMessage="No companies on this page"
+            />
+
+            <div className="flex flex-col gap-3 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <Dialog
+        open={!!reviewCompany}
+        onOpenChange={(open) => !open && setReviewCompany(null)}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Review employer registration</DialogTitle>
+          </DialogHeader>
+          {reviewCompany && (
             <VerificationReviewPanel
-              title={selected?.companyName ?? ""}
-              subtitle={selected?.user.email}
-              initial={selected?.companyName.charAt(0).toUpperCase() ?? ""}
+              title={reviewCompany.companyName}
+              subtitle={reviewCompany.user.email}
+              initial={reviewCompany.companyName.charAt(0).toUpperCase()}
               variant="company"
-              emptyMessage="No registration selected"
-              emptyHint="Select an employer from the review queue to verify their business details and approve or reject access."
-              meta={
-                selected
-                  ? [
-                      { label: "Industry", value: selected.industry },
-                      {
-                        label: "Completeness",
-                        value: `${getCompanyCompleteness(selected)}%`,
-                      },
-                    ]
-                  : []
-              }
+              meta={[
+                { label: "Industry", value: reviewCompany.industry || "—" },
+                {
+                  label: "Completeness",
+                  value: `${getCompanyCompleteness(reviewCompany)}%`,
+                },
+              ]}
               actions={
-                selected ? (
-                  <>
-                    {selected.website && (
-                      <Button variant="outline" className="rounded-full" asChild>
-                        <a href={selected.website} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-1.5 h-4 w-4" />
-                          Visit website
-                        </a>
-                      </Button>
-                    )}
-                    <Button
-                      className="flex-1 rounded-full gap-1.5"
-                      onClick={() => approveMutation.mutate(selected.userId)}
-                      disabled={approveMutation.isPending || !canApprove}
-                    >
-                      <Check className="h-4 w-4" />
-                      Approve employer
+                <>
+                  {reviewCompany.website && (
+                    <Button variant="outline" className="rounded-full" asChild>
+                      <a
+                        href={reviewCompany.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-1.5 h-4 w-4" />
+                        Visit website
+                      </a>
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-full gap-1.5 text-destructive hover:text-destructive"
-                      onClick={() => setShowReject(true)}
-                    >
-                      <X className="h-4 w-4" />
-                      Reject
-                    </Button>
-                  </>
-                ) : undefined
+                  )}
+                  <Button
+                    className="flex-1 rounded-full"
+                    onClick={() => approveMutation.mutate(reviewCompany.userId)}
+                    disabled={approveMutation.isPending || !canApprove}
+                  >
+                    <Check className="mr-1.5 h-4 w-4" />
+                    Approve employer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-full text-destructive hover:text-destructive"
+                    onClick={() => setShowRejectDialog(true)}
+                  >
+                    <X className="mr-1.5 h-4 w-4" />
+                    Reject
+                  </Button>
+                </>
               }
             >
-              {selected && (
-                <>
-                  <VerificationChecklist items={checklist} />
-                  {!canApprove && (
-                    <p className="text-xs text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2">
-                      At least 4 checklist items must pass before approval is enabled.
-                      {missingItems.length > 0 && (
-                        <> Still needed: {missingItems.join(", ")}.</>
-                      )}
-                    </p>
+              <VerificationChecklist items={checklist} />
+              {!canApprove && (
+                <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                  At least 4 checklist items must pass before approval is enabled.
+                  {missingItems.length > 0 && (
+                    <> Still needed: {missingItems.join(", ")}.</>
                   )}
-                  <VerificationDetailSection label="Company overview">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {selected.description || "No description provided."}
-                    </p>
-                  </VerificationDetailSection>
-                  <VerificationDetailSection label="Business details">
-                    <dl className="grid gap-3 sm:grid-cols-2 text-sm">
-                      <div>
-                        <dt className="text-muted-foreground">Industry</dt>
-                        <dd className="mt-0.5 font-medium text-foreground">{selected.industry}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">Contact email</dt>
-                        <dd className="mt-0.5 font-medium text-foreground">{selected.user.email}</dd>
-                      </div>
-                      {selected.website && (
-                        <div className="sm:col-span-2">
-                          <dt className="text-muted-foreground">Website</dt>
-                          <dd className="mt-0.5">
-                            <a
-                              href={selected.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                            >
-                              {selected.website}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                  </VerificationDetailSection>
-                </>
+                </p>
               )}
+              <VerificationDetailSection label="Company overview">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {reviewCompany.description || "No description provided."}
+                </p>
+              </VerificationDetailSection>
+              <VerificationDetailSection label="Business details">
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground">Industry</dt>
+                    <dd className="mt-0.5 font-medium text-foreground">
+                      {reviewCompany.industry || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Contact email</dt>
+                    <dd className="mt-0.5 font-medium text-foreground">
+                      {reviewCompany.user.email}
+                    </dd>
+                  </div>
+                  {reviewCompany.website && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-muted-foreground">Website</dt>
+                      <dd className="mt-0.5">
+                        <a
+                          href={reviewCompany.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        >
+                          {reviewCompany.website}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </VerificationDetailSection>
             </VerificationReviewPanel>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      <Dialog open={showReject} onOpenChange={setShowReject}>
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent className="rounded-2xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Reject employer registration</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The company contact will receive your feedback and may reapply after updating their profile.
+              The company contact will receive your feedback and may reapply after
+              updating their profile.
             </p>
-            <div>
+            <div className="space-y-2">
               <Label>Reason for rejection</Label>
               <Textarea
-                className="mt-1.5"
+                rows={4}
+                placeholder="Explain why this registration cannot be approved..."
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Explain why this registration cannot be approved..."
-                rows={4}
               />
             </div>
             <Button
@@ -301,9 +520,9 @@ export default function AdminEmployerVerificationPage() {
               className="w-full rounded-full"
               disabled={!rejectReason.trim() || rejectMutation.isPending}
               onClick={() =>
-                selected &&
+                reviewCompany &&
                 rejectMutation.mutate({
-                  companyId: selected.userId,
+                  companyId: reviewCompany.userId,
                   reason: rejectReason,
                 })
               }

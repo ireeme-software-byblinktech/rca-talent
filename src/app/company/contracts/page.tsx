@@ -83,9 +83,9 @@ export default function CompanyContractsPage() {
     enabled: !!user,
   });
 
-  const { data: requests = [] } = useQuery({
-    queryKey: ["company-contact-requests", user?.id],
-    queryFn: () => contactRequestsApi.getForCompany(user!.id),
+  const { data: candidates = [], isLoading: candidatesLoading } = useQuery({
+    queryKey: ["company-candidates", user?.id],
+    queryFn: () => contactRequestsApi.getAcceptedCandidates(user!.id),
     enabled: !!user,
   });
 
@@ -95,7 +95,7 @@ export default function CompanyContractsPage() {
     enabled: !!user,
   });
 
-  const acceptedCandidates = requests.filter((r) => r.status === "accepted");
+  const acceptedCandidates = candidates;
 
   const createMutation = useMutation({
     mutationFn: (data: CreateForm) =>
@@ -143,6 +143,13 @@ export default function CompanyContractsPage() {
       setDetailOpen(false);
       setSelected(null);
     },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Could not send contract",
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    },
   });
 
   const voidMutation = useMutation({
@@ -152,6 +159,13 @@ export default function CompanyContractsPage() {
       toast({ title: "Contract voided" });
       setDetailOpen(false);
       setSelected(null);
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Could not void contract",
+        description: err instanceof Error ? err.message : "Try again",
+      });
     },
   });
 
@@ -170,7 +184,7 @@ export default function CompanyContractsPage() {
       >
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="rounded-full gap-2" disabled={acceptedCandidates.length === 0}>
+            <Button className="rounded-full gap-2" disabled={candidatesLoading || acceptedCandidates.length === 0}>
               <Plus className="h-4 w-4" />
               New contract
             </Button>
@@ -193,13 +207,21 @@ export default function CompanyContractsPage() {
                     <SelectValue placeholder="Select accepted candidate" />
                   </SelectTrigger>
                   <SelectContent>
-                    {acceptedCandidates.map((r) => (
-                      <SelectItem key={r.studentId} value={r.studentId}>
-                        {r.student?.fullName ?? r.studentId}
+                    {acceptedCandidates.map((candidate) => (
+                      <SelectItem key={candidate.userId} value={candidate.userId}>
+                        {candidate.fullName}
+                        {candidate.cohortYear
+                          ? ` · Class of ${candidate.cohortYear}`
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {acceptedCandidates.length === 0 && !candidatesLoading && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Accept a contact request first. Send one from a student profile in Find Talent.
+                  </p>
+                )}
               </div>
               <div>
                 <Label>Related job (optional)</Label>
@@ -246,7 +268,11 @@ export default function CompanyContractsPage() {
                 <Label>Terms & conditions</Label>
                 <Textarea rows={8} className="mt-1.5 font-mono text-xs" {...form.register("terms")} />
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={createMutation.isPending || candidatesLoading || acceptedCandidates.length === 0}
+              >
                 {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create draft
               </Button>

@@ -29,12 +29,12 @@ import { useToast } from "@/hooks/use-toast";
 import type { BlogPost } from "@/types";
 
 const postSchema = z.object({
-  slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and hyphens"),
-  title: z.string().min(5),
-  excerpt: z.string().min(20),
-  content: z.string().min(50),
-  author: z.string().min(2),
-  tags: z.string().min(1),
+  slug: z.string().min(3, "Slug is required").regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and hyphens"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  excerpt: z.string().min(10, "Excerpt must be at least 10 characters"),
+  content: z.string().min(10, "Content must be at least 10 characters"),
+  author: z.string().min(2, "Author is required"),
+  tags: z.string().min(1, "Add at least one tag"),
 });
 
 type PostForm = z.infer<typeof postSchema>;
@@ -85,16 +85,42 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
       toast({ title: post ? "Post updated" : "Post created" });
       onClose();
     },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: post ? "Could not update post" : "Could not create post",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    },
   });
+
+  const fieldError = (name: keyof PostForm) =>
+    form.formState.errors[name]?.message as string | undefined;
 
   return (
     <form
-      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      onSubmit={form.handleSubmit(
+        (d) => mutation.mutate(d),
+        (errors) => {
+          const first = Object.values(errors)[0]?.message;
+          toast({
+            variant: "destructive",
+            title: "Fix the form before submitting",
+            description:
+              typeof first === "string"
+                ? first
+                : "Check title, excerpt, content, and tags.",
+          });
+        }
+      )}
       className="space-y-5 max-h-[70vh] overflow-y-auto px-1 pb-2"
     >
       <div>
         <Label>Title</Label>
         <Input className="mt-1.5" {...form.register("title")} placeholder="Enter post title" />
+        {fieldError("title") && (
+          <p className="mt-1 text-xs text-destructive">{fieldError("title")}</p>
+        )}
       </div>
       <div>
         <Label>Slug</Label>
@@ -117,14 +143,23 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
       <div>
         <Label>Excerpt</Label>
         <Textarea className="mt-1.5" {...form.register("excerpt")} rows={2} />
+        {fieldError("excerpt") && (
+          <p className="mt-1 text-xs text-destructive">{fieldError("excerpt")}</p>
+        )}
       </div>
       <div>
         <Label>Content (use ## for headings)</Label>
         <Textarea className="mt-1.5" {...form.register("content")} rows={8} />
+        {fieldError("content") && (
+          <p className="mt-1 text-xs text-destructive">{fieldError("content")}</p>
+        )}
       </div>
       <div>
         <Label>Tags (comma-separated)</Label>
         <Input className="mt-1.5" {...form.register("tags")} placeholder="RCA, Careers" />
+        {fieldError("tags") && (
+          <p className="mt-1 text-xs text-destructive">{fieldError("tags")}</p>
+        )}
       </div>
       <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
         <Label>Published</Label>

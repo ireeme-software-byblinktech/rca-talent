@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -45,6 +45,8 @@ import { ReorderList } from "@/components/portfolio/ReorderList";
 import { SectionSaveBar } from "@/components/portfolio/SectionSaveBar";
 import { portfolioApi } from "@/lib/api/portfolio";
 import { studentsApi } from "@/lib/api/students";
+import { filesApi } from "@/lib/api/files";
+import { debugProfile } from "@/lib/debug/profile-debug";
 import { certificationsApi } from "@/lib/api/certifications";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +125,8 @@ export default function StudentPortfolioPage() {
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null);
   const [profileDirty, setProfileDirty] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
 
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
@@ -261,7 +265,7 @@ export default function StudentPortfolioPage() {
   const saveProfileMutation = useMutation({
     mutationFn: () => {
       if (!profileDraft) throw new Error("No profile data");
-      return studentsApi.updateProfile(user!.id, {
+      const payload = {
         fullName: profileDraft.fullName,
         bio: profileDraft.bio,
         skills: profileDraft.skills,
@@ -270,7 +274,9 @@ export default function StudentPortfolioPage() {
         cohortYear: profileDraft.cohortYear,
         photoUrl: profileDraft.photoUrl,
         cvUrl: profileDraft.cvUrl,
-      });
+      };
+      debugProfile("portfolio page save profile", payload);
+      return studentsApi.updateProfile(user!.id, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student-profile"] });
@@ -350,24 +356,40 @@ export default function StudentPortfolioPage() {
     },
   });
 
-  const mockUpload = (type: "photo" | "cv") => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((p) => {
-        if (p === null || p >= 100) {
-          clearInterval(interval);
-          setUploadProgress(null);
-          if (type === "cv") {
-            updateProfileField("cvUrl", `/mock/cv-${user?.id}.pdf`);
-          } else {
-            updateProfileField("photoUrl", `/mock/photo-${user?.id}.jpg`);
-          }
-          toast({ title: "Upload complete" });
-          return null;
-        }
-        return p + 25;
+  const handleFileUpload = async (type: "photo" | "cv", file: File) => {
+    setUploadProgress(10);
+    try {
+      const uploaded =
+        type === "photo"
+          ? await filesApi.uploadProfilePhoto(file)
+          : await filesApi.uploadResume(file);
+      setUploadProgress(100);
+      updateProfileField(type === "photo" ? "photoUrl" : "cvUrl", uploaded.url);
+      toast({
+        title: "Upload complete",
+        description: `${type === "photo" ? "Profile photo" : "CV"} added. Save profile to persist.`,
       });
-    }, 150);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Could not upload file",
+      });
+    } finally {
+      setUploadProgress(null);
+    }
+  };
+
+  const onPhotoSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void handleFileUpload("photo", file);
+    event.target.value = "";
+  };
+
+  const onCvSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void handleFileUpload("cv", file);
+    event.target.value = "";
   };
 
   const orderedProjects = useMemo(
@@ -713,12 +735,19 @@ export default function StudentPortfolioPage() {
                     value={profileDraft.photoUrl ?? ""}
                     onChange={(e) => updateProfileField("photoUrl", e.target.value || undefined)}
                   />
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={onPhotoSelected}
+                  />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="mt-2 gap-1"
-                    onClick={() => mockUpload("photo")}
+                    onClick={() => photoInputRef.current?.click()}
                     disabled={uploadProgress !== null}
                   >
                     <Upload className="h-3.5 w-3.5" />
@@ -731,16 +760,23 @@ export default function StudentPortfolioPage() {
                   </Label>
                   <Input
                     className="mt-1.5"
-                    placeholder="https://... or /mock/cv.pdf"
+                    placeholder="https://..."
                     value={profileDraft.cvUrl ?? ""}
                     onChange={(e) => updateProfileField("cvUrl", e.target.value || undefined)}
+                  />
+                  <input
+                    ref={cvInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={onCvSelected}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="mt-2 gap-1"
-                    onClick={() => mockUpload("cv")}
+                    onClick={() => cvInputRef.current?.click()}
                     disabled={uploadProgress !== null}
                   >
                     <Upload className="h-3.5 w-3.5" />
@@ -1003,7 +1039,7 @@ export default function StudentPortfolioPage() {
           if (!open) setEditingProject(undefined);
         }}
       >
-        <DialogContent>
+        <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editingProject ? "Edit project" : "New project"}</DialogTitle>
           </DialogHeader>
@@ -1031,7 +1067,7 @@ export default function StudentPortfolioPage() {
           if (!open) setEditingCert(null);
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-md flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {editingCert ? "Edit certification" : "Add certification"}

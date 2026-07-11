@@ -127,6 +127,7 @@ export interface PlatformMetrics {
   pendingStudents: number;
   rejectedStudents: number;
   totalCompanies: number;
+  pendingCompanies?: number;
   totalContactRequests: number;
   requestsByStatus: Record<ContactRequestStatus, number>;
 }
@@ -158,6 +159,7 @@ export interface Achievement {
   id: string;
   studentId: string;
   title: string;
+  organization: string;
   description: string;
   date: string;
 }
