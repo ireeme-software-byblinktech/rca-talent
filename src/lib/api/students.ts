@@ -8,10 +8,13 @@ import type {
   StudentWithUser,
 } from "@/types";
 import {
+  mapProject,
+  mapProjectToBackend,
   mapStudentProfile,
   mapStudentUpdateToBackend,
   mapStudentWithUser,
 } from "./mappers";
+import { debugProfile } from "@/lib/debug/profile-debug";
 
 const USE_MOCK = isMockMode();
 
@@ -53,7 +56,9 @@ export const studentsApi = {
     }
     const { apiClient } = await import("./client");
     const raw = await apiClient<Record<string, unknown>>(`/students/${userId}/profile`);
-    return mapStudentProfile(raw);
+    const mapped = mapStudentProfile(raw);
+    debugProfile("GET /students/:id/profile response", { raw, mapped });
+    return mapped;
   },
 
   async updateProfile(
@@ -73,25 +78,44 @@ export const studentsApi = {
       return store.studentProfiles[idx];
     }
     const { apiClient } = await import("./client");
-    await apiClient<Record<string, unknown>>(
+    const patchBody = mapStudentUpdateToBackend(data as Record<string, unknown>);
+    debugProfile("PATCH /students/:id/profile request", { userId, input: data, patchBody });
+
+    const patchResponse = await apiClient<Record<string, unknown>>(
       `/students/${userId}/profile`,
       {
         method: "PATCH",
-        body: mapStudentUpdateToBackend(data as Record<string, unknown>),
+        body: patchBody,
       }
     );
+    debugProfile("PATCH /students/:id/profile response", patchResponse);
 
     if (data.skills !== undefined) {
-      await apiClient<Record<string, unknown>>(`/students/${userId}/skills/sync`, {
-        method: "PUT",
-        body: { skillNames: data.skills },
+      debugProfile("PUT /students/:id/skills/sync request", {
+        userId,
+        skillNames: data.skills,
       });
+      try {
+        await apiClient<Record<string, unknown>>(`/students/${userId}/skills/sync`, {
+          method: "PUT",
+          body: { skillNames: data.skills },
+        });
+      } catch (err) {
+        console.error("[ProfileDebug] skills sync failed", err);
+        throw new Error(
+          err instanceof Error
+            ? `Profile saved but skills failed: ${err.message}`
+            : "Profile saved but skills failed to sync"
+        );
+      }
     }
 
     const raw = await apiClient<Record<string, unknown>>(
       `/students/${userId}/profile`
     );
-    return mapStudentProfile(raw);
+    const mapped = mapStudentProfile(raw);
+    debugProfile("GET /students/:id/profile after save", { raw, mapped });
+    return mapped;
   },
 
   async resubmitForVerification(userId: string): Promise<StudentProfile> {
@@ -183,7 +207,10 @@ export const studentsApi = {
       return store.projects.filter((p) => p.studentId === studentId);
     }
     const { apiClient } = await import("./client");
-    return apiClient<Project[]>(`/students/${studentId}/projects`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/students/${studentId}/projects`,
+    );
+    return raw.map((project) => mapProject(project, studentId));
   },
 
   async createProject(studentId: string, data: CreateProjectData): Promise<Project> {
@@ -203,10 +230,14 @@ export const studentsApi = {
       return project;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Project>(`/students/${studentId}/projects`, {
-      method: "POST",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/projects`,
+      {
+        method: "POST",
+        body: mapProjectToBackend(data),
+      },
+    );
+    return mapProject(raw, studentId);
   },
 
   async updateProject(
@@ -229,10 +260,14 @@ export const studentsApi = {
       return store.projects[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Project>(`/students/${studentId}/projects/${projectId}`, {
-      method: "PATCH",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/projects/${projectId}`,
+      {
+        method: "PATCH",
+        body: mapProjectToBackend(data),
+      },
+    );
+    return mapProject(raw, studentId);
   },
 
   async deleteProject(studentId: string, projectId: string): Promise<void> {

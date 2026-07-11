@@ -1,5 +1,6 @@
 import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
+import { mapJobPosting, mapJobToBackend } from "@/lib/api/mappers";
 import type { JobPosting, JobType } from "@/types";
 
 const USE_MOCK = isMockMode();
@@ -19,7 +20,10 @@ export const jobsApi = {
       return getStore().jobPostings.filter((j) => j.companyId === companyId);
     }
     const { apiClient } = await import("./client");
-    return apiClient<JobPosting[]>(`/companies/${companyId}/jobs`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/companies/${companyId}/jobs`
+    );
+    return raw.map((job) => mapJobPosting(job, companyId));
   },
 
   async getOpen(): Promise<JobPosting[]> {
@@ -28,7 +32,8 @@ export const jobsApi = {
       return getStore().jobPostings.filter((j) => j.status === "open");
     }
     const { apiClient } = await import("./client");
-    return apiClient<JobPosting[]>("/jobs/open");
+    const raw = await apiClient<Record<string, unknown>[]>("/jobs/open");
+    return raw.map((job) => mapJobPosting(job));
   },
 
   async create(companyId: string, data: CreateJobData): Promise<JobPosting> {
@@ -45,10 +50,14 @@ export const jobsApi = {
       return job;
     }
     const { apiClient } = await import("./client");
-    return apiClient<JobPosting>(`/companies/${companyId}/jobs`, {
-      method: "POST",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${companyId}/jobs`,
+      {
+        method: "POST",
+        body: mapJobToBackend(data),
+      }
+    );
+    return mapJobPosting({ ...raw, type: data.type, skills: data.skills }, companyId);
   },
 
   async update(
@@ -67,10 +76,14 @@ export const jobsApi = {
       return store.jobPostings[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<JobPosting>(`/companies/${companyId}/jobs/${jobId}`, {
-      method: "PATCH",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${companyId}/jobs/${jobId}`,
+      {
+        method: "PATCH",
+        body: mapJobToBackend(data),
+      }
+    );
+    return mapJobPosting({ ...raw, type: data.type, skills: data.skills }, companyId);
   },
 
   async updateStatus(
@@ -89,10 +102,14 @@ export const jobsApi = {
       return store.jobPostings[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<JobPosting>(`/companies/${companyId}/jobs/${jobId}`, {
-      method: "PATCH",
-      body: { status },
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${companyId}/jobs/${jobId}`,
+      {
+        method: "PATCH",
+        body: mapJobToBackend({ status }),
+      }
+    );
+    return mapJobPosting(raw, companyId);
   },
 
   async delete(companyId: string, jobId: string): Promise<void> {

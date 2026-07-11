@@ -33,7 +33,7 @@ export default function CompanySearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<ViewMode>("cards");
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [
       "talent-search",
       searchTerm,
@@ -238,11 +238,21 @@ export default function CompanySearchPage() {
 
       {isLoading ? (
         <CardGridSkeleton />
+      ) : isError ? (
+        <EmptyState
+          icon={<Users className="h-8 w-8" />}
+          title="Could not load talent"
+          description={
+            error instanceof Error
+              ? error.message
+              : "Something went wrong. Please try again."
+          }
+        />
       ) : students.length === 0 ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
           title="No students found"
-          description="Try adjusting your search or filters."
+          description="Try adjusting your search or filters. Students must complete their profile and be verified by an admin to appear here."
         />
       ) : (
         <>

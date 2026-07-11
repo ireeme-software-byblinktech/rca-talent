@@ -44,6 +44,7 @@ const certSchema = z.object({
 
 const achSchema = z.object({
   title: z.string().min(2),
+  organization: z.string().min(2),
   description: z.string().min(10),
   date: z.string().min(1),
 });
@@ -113,7 +114,7 @@ export default function StudentCertificationsPage() {
 
   const openAddAch = () => {
     setEditingAch(null);
-    achForm.reset({ title: "", description: "", date: "" });
+    achForm.reset({ title: "", organization: "", description: "", date: "" });
     setAchDialogOpen(true);
   };
 
@@ -121,6 +122,7 @@ export default function StudentCertificationsPage() {
     setEditingAch(ach);
     achForm.reset({
       title: ach.title,
+      organization: ach.organization,
       description: ach.description,
       date: ach.date,
     });
@@ -314,7 +316,7 @@ export default function StudentCertificationsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-md flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {editingCert ? "Edit Certification" : "Add Certification"}
@@ -322,13 +324,13 @@ export default function StudentCertificationsPage() {
           </DialogHeader>
           <form
             onSubmit={certForm.handleSubmit((d) => saveCert.mutate(d))}
-            className="space-y-4"
+            className="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pr-1"
           >
             <div>
               <Label>Thumbnail image</Label>
               <div className="mt-2 rounded-xl border border-dashed border-border/60 bg-muted/30 p-4">
                 {displayThumbnail ? (
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                  <div className="relative mx-auto aspect-[4/3] w-full max-h-36 overflow-hidden rounded-lg">
                     <Image
                       src={displayThumbnail}
                       alt="Certificate thumbnail preview"
@@ -441,6 +443,13 @@ export default function StudentCertificationsPage() {
             <div>
               <Label>Title</Label>
               <Input {...achForm.register("title")} placeholder="Hackathon Winner" />
+            </div>
+            <div>
+              <Label>Organization</Label>
+              <Input
+                {...achForm.register("organization")}
+                placeholder="Rwanda Coding Academy"
+              />
             </div>
             <div>
               <Label>Description</Label>

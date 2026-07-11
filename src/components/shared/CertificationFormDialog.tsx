@@ -131,12 +131,15 @@ export function CertificationFormDialog({
   const displayThumbnail = imagePreview || watchedImageUrl || null;
 
   return (
-    <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+    <form
+      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      className="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pr-1"
+    >
       <div>
         <Label>Thumbnail image</Label>
         <div className="mt-2 rounded-xl border border-dashed border-border/60 bg-muted/30 p-4">
           {displayThumbnail ? (
-            <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+            <div className="relative mx-auto aspect-[4/3] w-full max-h-36 overflow-hidden rounded-lg">
               <Image
                 src={displayThumbnail}
                 alt="Certificate thumbnail"

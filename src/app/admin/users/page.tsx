@@ -48,6 +48,13 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       toast({ title: "User status updated" });
     },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Could not update user status",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    },
   });
 
   const metrics = useMemo(

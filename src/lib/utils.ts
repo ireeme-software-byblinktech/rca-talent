@@ -50,3 +50,33 @@ export function orderByIds<T extends { id: string }>(items: T[], order: string[]
     .filter((x): x is T => !!x);
   return [...sorted, ...items.filter((i) => !ids.includes(i.id))];
 }
+
+const IMAGE_EXTENSION_RE = /\.(avif|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
+const IMAGE_CDN_HOSTS = new Set(["images.unsplash.com"]);
+
+/** True when a URL is safe to pass to next/image (direct image, not an app page). */
+export function isRenderableImageUrl(url: string | undefined | null): url is string {
+  if (!url?.trim()) return false;
+
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+
+    // Reject in-app routes accidentally pasted as image URLs.
+    if (
+      /^\/(student|company|admin|login|register|blog|p)(\/|$)/.test(parsed.pathname)
+    ) {
+      return false;
+    }
+
+    if (IMAGE_CDN_HOSTS.has(parsed.hostname)) return true;
+    if (IMAGE_EXTENSION_RE.test(parsed.pathname)) return true;
+    if (/\/(upload|uploads|files|storage|assets)\//i.test(parsed.pathname)) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}

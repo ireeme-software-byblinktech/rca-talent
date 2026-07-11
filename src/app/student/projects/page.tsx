@@ -165,7 +165,7 @@ export default function StudentProjectsPage() {
               Add project
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle>
                 {editingProject ? "Edit project" : "New project"}

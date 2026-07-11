@@ -62,9 +62,9 @@ export default function CompanyInterviewsPage() {
     enabled: !!user,
   });
 
-  const { data: requests = [] } = useQuery({
-    queryKey: ["company-contact-requests", user?.id],
-    queryFn: () => contactRequestsApi.getForCompany(user!.id),
+  const { data: candidates = [], isLoading: candidatesLoading, isError: candidatesError } = useQuery({
+    queryKey: ["company-candidates", user?.id],
+    queryFn: () => contactRequestsApi.getAcceptedCandidates(user!.id),
     enabled: !!user,
   });
 
@@ -74,7 +74,7 @@ export default function CompanyInterviewsPage() {
     enabled: !!user,
   });
 
-  const acceptedCandidates = requests.filter((r) => r.status === "accepted");
+  const acceptedCandidates = candidates;
 
   const stats = useMemo(
     () => ({
@@ -99,6 +99,13 @@ export default function CompanyInterviewsPage() {
       toast({ title: "Interview invitation sent" });
       setOpen(false);
       form.reset({ location: "TechKigali Office, Kigali" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Could not send invitation",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -144,18 +151,29 @@ export default function CompanyInterviewsPage() {
                     <SelectValue placeholder="Select candidate" />
                   </SelectTrigger>
                   <SelectContent>
-                    {acceptedCandidates.map((r) => (
-                      <SelectItem key={r.studentId} value={r.studentId}>
-                        {r.student?.fullName ?? r.studentId}
+                    {acceptedCandidates.map((candidate) => (
+                      <SelectItem key={candidate.userId} value={candidate.userId}>
+                        {candidate.fullName}
+                        {candidate.cohortYear
+                          ? ` · Class of ${candidate.cohortYear}`
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {acceptedCandidates.length === 0 && (
+                {candidatesLoading ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Accept a contact request first to invite a candidate.
+                    Loading candidates…
                   </p>
-                )}
+                ) : candidatesError ? (
+                  <p className="mt-1 text-xs text-destructive">
+                    Could not load candidates. Please refresh and try again.
+                  </p>
+                ) : acceptedCandidates.length === 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Accept a contact request first to invite a candidate. Send one from a student profile in Find Talent.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label>Related job (optional)</Label>
@@ -195,7 +213,7 @@ export default function CompanyInterviewsPage() {
               <Button
                 type="submit"
                 className="w-full rounded-full"
-                disabled={createMutation.isPending || acceptedCandidates.length === 0}
+                disabled={createMutation.isPending || candidatesLoading || acceptedCandidates.length === 0}
               >
                 {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Send invitation

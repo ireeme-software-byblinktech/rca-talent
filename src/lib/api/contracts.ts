@@ -1,4 +1,10 @@
+import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
+import {
+  mapContract,
+  mapContractToBackend,
+  mapContractWithDetails,
+} from "@/lib/api/mappers";
 import type {
   Contract,
   ContractSignature,
@@ -6,7 +12,7 @@ import type {
   ContractWithDetails,
 } from "@/types";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+const USE_MOCK = isMockMode();
 
 export interface CreateContractData {
   studentId: string;
@@ -61,7 +67,10 @@ export const contractsApi = {
       return enrich(getStore().contracts.filter((c) => c.companyId === companyId));
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContractWithDetails[]>(`/contracts/company/${companyId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/contracts/company/${companyId}`
+    );
+    return raw.map((item) => mapContractWithDetails(item, { companyId }));
   },
 
   async getForStudent(studentId: string): Promise<ContractWithDetails[]> {
@@ -70,7 +79,10 @@ export const contractsApi = {
       return enrich(getStore().contracts.filter((c) => c.studentId === studentId));
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContractWithDetails[]>(`/contracts/student/${studentId}`);
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/contracts/student/${studentId}`
+    );
+    return raw.map((item) => mapContractWithDetails(item, { studentId }));
   },
 
   async getById(contractId: string): Promise<ContractWithDetails | null> {
@@ -80,7 +92,8 @@ export const contractsApi = {
       return contract ? enrich([contract])[0] : null;
     }
     const { apiClient } = await import("./client");
-    return apiClient<ContractWithDetails | null>(`/contracts/${contractId}`);
+    const raw = await apiClient<Record<string, unknown>>(`/contracts/${contractId}`);
+    return mapContractWithDetails(raw);
   },
 
   async create(companyId: string, data: CreateContractData): Promise<Contract> {
@@ -109,7 +122,11 @@ export const contractsApi = {
       return contract;
     }
     const { apiClient } = await import("./client");
-    return apiClient<Contract>("/contracts", { method: "POST", body: { ...data, companyId } });
+    const raw = await apiClient<Record<string, unknown>>("/contracts", {
+      method: "POST",
+      body: mapContractToBackend({ ...data, companyId }),
+    });
+    return mapContract(raw, { companyId });
   },
 
   async signAndSend(
@@ -149,10 +166,11 @@ export const contractsApi = {
       return store.contracts[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Contract>(`/contracts/${contractId}/sign-and-send`, {
-      method: "POST",
-      body: signature,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/contracts/${contractId}/sign-and-send`,
+      { method: "POST", body: signature }
+    );
+    return mapContract(raw, { companyId });
   },
 
   async signAsStudent(
@@ -192,10 +210,11 @@ export const contractsApi = {
       return store.contracts[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Contract>(`/contracts/${contractId}/sign`, {
-      method: "POST",
-      body: signature,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/contracts/${contractId}/sign`,
+      { method: "POST", body: signature }
+    );
+    return mapContract(raw, { studentId });
   },
 
   async decline(studentId: string, contractId: string): Promise<Contract> {
@@ -216,7 +235,11 @@ export const contractsApi = {
       return store.contracts[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Contract>(`/contracts/${contractId}/decline`, { method: "POST" });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/contracts/${contractId}/decline`,
+      { method: "POST" }
+    );
+    return mapContract(raw, { studentId });
   },
 
   async voidContract(companyId: string, contractId: string): Promise<Contract> {
@@ -235,7 +258,11 @@ export const contractsApi = {
       return store.contracts[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<Contract>(`/contracts/${contractId}/void`, { method: "POST" });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/contracts/${contractId}/void`,
+      { method: "POST" }
+    );
+    return mapContract(raw, { companyId });
   },
 };
 

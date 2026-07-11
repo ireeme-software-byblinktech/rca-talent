@@ -170,6 +170,13 @@ export default function CompanyJobsPage() {
       setDialogOpen(false);
       setEditingJob(null);
     },
+    onError: (err) => {
+      toast({
+        title: "Could not save job",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const toggleStatus = useMutation({
@@ -179,6 +186,13 @@ export default function CompanyJobsPage() {
       queryClient.invalidateQueries({ queryKey: ["company-jobs"] });
       toast({ title: "Status updated" });
     },
+    onError: (err) => {
+      toast({
+        title: "Could not update status",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -186,6 +200,13 @@ export default function CompanyJobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company-jobs"] });
       toast({ title: "Job deleted" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Could not delete job",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

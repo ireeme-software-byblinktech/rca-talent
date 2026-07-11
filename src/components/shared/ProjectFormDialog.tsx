@@ -15,6 +15,7 @@ import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { SKILL_OPTIONS } from "@/lib/mock/data";
+import { isRenderableImageUrl } from "@/lib/utils";
 import type { Project } from "@/types";
 
 const projectSchema = z.object({
@@ -22,7 +23,18 @@ const projectSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   demo: z.string().url().optional().or(z.literal("")),
   repo: z.string().url().optional().or(z.literal("")),
-  coverImage: z.string().url().optional().or(z.literal("")),
+  coverImage: z
+    .union([
+      z.literal(""),
+      z
+        .string()
+        .url("Enter a valid image URL")
+        .refine(isRenderableImageUrl, {
+          message:
+            "Use a direct image link (e.g. .jpg, .png) or Unsplash URL — not an app page",
+        }),
+    ])
+    .optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -45,8 +57,8 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
       ? {
           title: project.title,
           description: project.description,
-          demo: project.links.demo ?? "",
-          repo: project.links.repo ?? "",
+          demo: project.links?.demo ?? "",
+          repo: project.links?.repo ?? "",
           coverImage: project.images?.[0] ?? "",
         }
       : undefined,
@@ -82,7 +94,10 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
   });
 
   return (
-    <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+    <form
+      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      className="flex max-h-[min(70vh,32rem)] flex-col gap-4 overflow-y-auto pr-1"
+    >
       <div className="space-y-2">
         <Label>Title</Label>
         <Input {...form.register("title")} />

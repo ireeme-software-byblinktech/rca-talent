@@ -35,6 +35,10 @@ export interface RequestOptions {
   skipRefresh?: boolean;
 }
 
+function isFormDataBody(body: unknown): body is FormData {
+  return typeof FormData !== "undefined" && body instanceof FormData;
+}
+
 let authToken: string | null = null;
 let refreshToken: string | null = null;
 let onTokensRefreshed:
@@ -107,22 +111,26 @@ export async function apiClient<T>(
   const { method = "GET", body, headers = {}, token, skipRefresh } = options;
 
   const makeRequest = async (activeToken: string | null): Promise<Response> => {
+    const requestHeaders: Record<string, string> = { ...headers };
     const config: RequestInit = {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers: requestHeaders,
       credentials: "include",
     };
 
     if (activeToken) {
-      (config.headers as Record<string, string>)["Authorization"] =
-        `Bearer ${activeToken}`;
+      requestHeaders.Authorization = `Bearer ${activeToken}`;
     }
 
-    if (body) {
-      config.body = JSON.stringify(body);
+    if (body !== undefined) {
+      if (isFormDataBody(body)) {
+        config.body = body;
+      } else {
+        requestHeaders["Content-Type"] = "application/json";
+        config.body = JSON.stringify(body);
+      }
+    } else if (method !== "GET" && method !== "HEAD") {
+      requestHeaders["Content-Type"] = "application/json";
     }
 
     return fetch(`${env.apiUrl}${endpoint}`, config);
@@ -144,11 +152,15 @@ export async function apiClient<T>(
     const message =
       (error as { message?: string | string[] }).message ??
       "An error occurred";
-    throw new ApiError(
-      Array.isArray(message) ? message.join(", ") : String(message),
-      response.status,
-      (error as { code?: string }).code
-    );
+    const errorMessage = Array.isArray(message) ? message.join(", ") : String(message);
+    console.error("[ProfileDebug] API error", {
+      endpoint,
+      method,
+      status: response.status,
+      message: errorMessage,
+      error,
+    });
+    throw new ApiError(errorMessage, response.status, (error as { code?: string }).code);
   }
 
   if (response.status === 204) {
