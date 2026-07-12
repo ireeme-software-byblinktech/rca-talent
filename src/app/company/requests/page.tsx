@@ -26,7 +26,7 @@ import type { ContactRequestWithDetails } from "@/types";
 
 export default function CompanyRequestsPage() {
   const { user } = useAuth();
-  const [view, setView] = useState<ViewMode>("cards");
+  const [view, setView] = useState<ViewMode>("table");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: requests = [], isLoading } = useQuery({

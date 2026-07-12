@@ -18,23 +18,21 @@ import { SKILL_OPTIONS } from "@/lib/mock/data";
 import { isRenderableImageUrl } from "@/lib/utils";
 import type { Project } from "@/types";
 
+const optionalUrl = z
+  .string()
+  .optional()
+  .refine(
+    (v) => !v?.trim() || z.string().url().safeParse(v.trim()).success,
+    { message: "Enter a valid URL (including https://)" }
+  );
+
 const projectSchema = z.object({
   title: z.string().min(2, "Title is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  demo: z.string().url().optional().or(z.literal("")),
-  repo: z.string().url().optional().or(z.literal("")),
-  coverImage: z
-    .union([
-      z.literal(""),
-      z
-        .string()
-        .url("Enter a valid image URL")
-        .refine(isRenderableImageUrl, {
-          message:
-            "Use a direct image link (e.g. .jpg, .png) or Unsplash URL — not an app page",
-        }),
-    ])
-    .optional(),
+  demo: optionalUrl,
+  repo: optionalUrl,
+  // Optional — invalid values are cleared on submit instead of blocking create
+  coverImage: z.string().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -61,17 +59,38 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           repo: project.links?.repo ?? "",
           coverImage: project.images?.[0] ?? "",
         }
-      : undefined,
+      : {
+          title: "",
+          description: "",
+          demo: "",
+          repo: "",
+          coverImage: "",
+        },
   });
 
   const mutation = useMutation({
     mutationFn: (data: ProjectForm) => {
+      const cover = (data.coverImage ?? "").trim();
+      const validCover =
+        cover && isRenderableImageUrl(cover) ? cover : undefined;
+
+      if (cover && !validCover) {
+        toast({
+          title: "Cover image skipped",
+          description:
+            "Use a direct image link (ending in .jpg, .png, .webp) or leave it blank.",
+        });
+      }
+
       const payload = {
         title: data.title,
         description: data.description,
         techStack,
-        links: { demo: data.demo || undefined, repo: data.repo || undefined },
-        images: data.coverImage ? [data.coverImage] : project?.images,
+        links: {
+          demo: data.demo?.trim() || undefined,
+          repo: data.repo?.trim() || undefined,
+        },
+        images: validCover ? [validCover] : project?.images,
       };
       return project
         ? studentsApi.updateProject(user!.id, project.id, payload)
@@ -93,26 +112,57 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
     },
   });
 
+  const errors = form.formState.errors;
+
   return (
     <form
-      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      noValidate
+      onSubmit={form.handleSubmit(
+        (d) => mutation.mutate(d),
+        (fieldErrors) => {
+          const first =
+            fieldErrors.title?.message ||
+            fieldErrors.description?.message ||
+            fieldErrors.demo?.message ||
+            fieldErrors.repo?.message ||
+            "Please fix the highlighted fields.";
+          toast({
+            variant: "destructive",
+            title: "Cannot create project",
+            description: first,
+          });
+        }
+      )}
       className="flex max-h-[min(70vh,32rem)] flex-col gap-4 overflow-y-auto pr-1"
     >
       <div className="space-y-2">
-        <Label>Title</Label>
-        <Input {...form.register("title")} />
+        <Label htmlFor="project-title">Title</Label>
+        <Input id="project-title" {...form.register("title")} />
+        {errors.title && (
+          <p className="text-xs text-destructive">{errors.title.message}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea rows={3} {...form.register("description")} />
+        <Label htmlFor="project-description">Description</Label>
+        <Textarea id="project-description" rows={3} {...form.register("description")} />
+        {errors.description && (
+          <p className="text-xs text-destructive">{errors.description.message}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label>Cover image URL (optional)</Label>
-        <Input placeholder="https://..." {...form.register("coverImage")} />
+        <Label htmlFor="project-cover">Cover image URL (optional)</Label>
+        <Input
+          id="project-cover"
+          placeholder="https://…/image.jpg"
+          {...form.register("coverImage")}
+        />
+        <p className="text-xs text-muted-foreground">
+          Leave blank if you don&apos;t have one. Must be a direct image link.
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Tech stack</Label>
-        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+        <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
           {SKILL_OPTIONS.map((skill) => (
             <Badge
               key={skill}
@@ -120,7 +170,9 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
               className="cursor-pointer"
               onClick={() =>
                 setTechStack((prev) =>
-                  prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+                  prev.includes(skill)
+                    ? prev.filter((s) => s !== skill)
+                    : [...prev, skill]
                 )
               }
             >
@@ -130,14 +182,32 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Demo URL</Label>
-        <Input placeholder="https://..." {...form.register("demo")} />
+        <Label htmlFor="project-demo">Demo URL</Label>
+        <Input
+          id="project-demo"
+          placeholder="https://..."
+          {...form.register("demo")}
+        />
+        {errors.demo && (
+          <p className="text-xs text-destructive">{errors.demo.message}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label>Repository URL</Label>
-        <Input placeholder="https://github.com/..." {...form.register("repo")} />
+        <Label htmlFor="project-repo">Repository URL</Label>
+        <Input
+          id="project-repo"
+          placeholder="https://github.com/..."
+          {...form.register("repo")}
+        />
+        {errors.repo && (
+          <p className="text-xs text-destructive">{errors.repo.message}</p>
+        )}
       </div>
-      <Button type="submit" className="w-full rounded-full" disabled={mutation.isPending}>
+      <Button
+        type="submit"
+        className="w-full rounded-full"
+        disabled={mutation.isPending}
+      >
         {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {project ? "Update project" : "Create project"}
       </Button>

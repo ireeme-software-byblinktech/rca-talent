@@ -62,6 +62,7 @@ const navSectionsByRole: Record<UserRole, NavSection[]> = {
       items: [
         { href: "/student", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
         { href: "/student/profile", label: "Profile", icon: <User className="h-4 w-4" /> },
+        { href: "/student/jobs", label: "Opportunities", icon: <Briefcase className="h-4 w-4" /> },
         { href: "/student/projects", label: "Projects", icon: <FolderKanban className="h-4 w-4" /> },
         { href: "/student/portfolio", label: "Portfolio", icon: <Globe className="h-4 w-4" /> },
         { href: "/student/certifications", label: "Certifications", icon: <Award className="h-4 w-4" /> },
@@ -79,6 +80,7 @@ const navSectionsByRole: Record<UserRole, NavSection[]> = {
         { href: "/company", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
         { href: "/company/search", label: "Find Talent", icon: <Search className="h-4 w-4" /> },
         { href: "/company/jobs", label: "Job Postings", icon: <Briefcase className="h-4 w-4" /> },
+        { href: "/company/applicants", label: "Applicants", icon: <ClipboardList className="h-4 w-4" /> },
         { href: "/company/bookmarks", label: "Saved Talent", icon: <Bookmark className="h-4 w-4" /> },
         { href: "/company/requests", label: "Sent Requests", icon: <FileText className="h-4 w-4" /> },
         { href: "/company/interviews", label: "Interviews", icon: <Calendar className="h-4 w-4" /> },

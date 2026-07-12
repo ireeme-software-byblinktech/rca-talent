@@ -36,7 +36,7 @@ export default function StudentProjectsPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
-  const [view, setView] = useState<ViewMode>("cards");
+  const [view, setView] = useState<ViewMode>("table");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["student-projects", user?.id],

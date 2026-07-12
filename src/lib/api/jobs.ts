@@ -1,7 +1,11 @@
 import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
-import { mapJobPosting, mapJobToBackend } from "@/lib/api/mappers";
-import type { JobPosting, JobType } from "@/types";
+import {
+  mapJobApplication,
+  mapJobPosting,
+  mapJobToBackend,
+} from "@/lib/api/mappers";
+import type { JobApplication, JobPosting, JobType } from "@/types";
 
 const USE_MOCK = isMockMode();
 
@@ -34,6 +38,94 @@ export const jobsApi = {
     const { apiClient } = await import("./client");
     const raw = await apiClient<Record<string, unknown>[]>("/jobs/open");
     return raw.map((job) => mapJobPosting(job));
+  },
+
+  async apply(jobId: string, coverLetter?: string): Promise<JobApplication> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const job = getStore().jobPostings.find((j) => j.id === jobId);
+      return {
+        id: generateId("app"),
+        jobId,
+        studentId: "mock-student",
+        coverLetter,
+        status: "applied",
+        createdAt: new Date().toISOString(),
+        job,
+      };
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>>(`/jobs/${jobId}/apply`, {
+      method: "POST",
+      body: { coverLetter },
+    });
+    return mapJobApplication(raw);
+  },
+
+  async getMyApplications(): Promise<JobApplication[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return [];
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>[]>(
+      "/jobs/my-applications"
+    );
+    return raw.map(mapJobApplication);
+  },
+
+  async getApplicationsForCompany(companyId: string): Promise<JobApplication[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return [];
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/companies/${companyId}/jobs/applications`
+    );
+    return raw.map(mapJobApplication);
+  },
+
+  async getApplicationsForJob(
+    companyId: string,
+    jobId: string
+  ): Promise<JobApplication[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return [];
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>[]>(
+      `/companies/${companyId}/jobs/${jobId}/applications`
+    );
+    return raw.map(mapJobApplication);
+  },
+
+  async updateApplicationStatus(
+    companyId: string,
+    jobId: string,
+    applicationId: string,
+    status: "under_review" | "accepted" | "rejected"
+  ): Promise<JobApplication> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return {
+        id: applicationId,
+        jobId,
+        studentId: "",
+        status,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>>(
+      `/companies/${companyId}/jobs/${jobId}/applications/${applicationId}`,
+      {
+        method: "PATCH",
+        body: { status },
+      }
+    );
+    return mapJobApplication(raw);
   },
 
   async create(companyId: string, data: CreateJobData): Promise<JobPosting> {
