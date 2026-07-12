@@ -28,7 +28,7 @@ export default function StudentContactRequestsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<ViewMode>("cards");
+  const [view, setView] = useState<ViewMode>("table");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: requests = [], isLoading } = useQuery({

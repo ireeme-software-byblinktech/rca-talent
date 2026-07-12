@@ -159,7 +159,7 @@ export function DataTable<T extends { id?: string }>({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-12 text-center text-muted-foreground shadow-card">
+      <div className="rounded-none border border-border/50 bg-card p-12 text-center text-muted-foreground shadow-card">
         {emptyMessage}
       </div>
     );
@@ -218,27 +218,31 @@ export function DataTable<T extends { id?: string }>({
         </div>
       )}
 
-      <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-hidden">
+      <div className="overflow-hidden rounded-none border border-border/50 bg-card shadow-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
+            <TableRow className="border-b-0 bg-primary hover:bg-primary">
               {selectable && (
-                <TableHead className="w-10">
+                <TableHead className="w-10 text-primary-foreground">
                   <Checkbox
                     checked={
                       paginatedData.length > 0 &&
                       selected.size === paginatedData.length
                     }
                     onCheckedChange={toggleSelectAll}
+                    className="border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary"
                   />
                 </TableHead>
               )}
               {columns.map((col) => (
-                <TableHead key={col.key}>
+                <TableHead
+                  key={col.key}
+                  className="rounded-none text-primary-foreground"
+                >
                   {col.sortable ? (
                     <button
                       type="button"
-                      className="flex items-center gap-1 font-semibold hover:text-primary transition-colors"
+                      className="flex items-center gap-1 font-semibold text-primary-foreground transition-colors hover:text-white/90"
                       onClick={() => toggleSort(col.key)}
                     >
                       {col.header}
@@ -253,7 +257,9 @@ export function DataTable<T extends { id?: string }>({
                       )}
                     </button>
                   ) : (
-                    <span className="font-semibold">{col.header}</span>
+                    <span className="font-semibold text-primary-foreground">
+                      {col.header}
+                    </span>
                   )}
                 </TableHead>
               ))}

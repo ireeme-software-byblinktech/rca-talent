@@ -90,9 +90,23 @@ function SectionHeading({
   );
 }
 
+const DEFAULT_SECTIONS: PortfolioSections = {
+  about: true,
+  skills: true,
+  projects: true,
+  certifications: true,
+  achievements: true,
+};
+
 export function PublicPortfolioView({ portfolio, preview, onEditSection }: PublicPortfolioViewProps) {
   const { config, profile, projects, certifications, achievements } = portfolio;
-  const { sections, theme, tagline } = config;
+  const theme: PortfolioTheme =
+    config?.theme && themeConfig[config.theme] ? config.theme : "modern";
+  const sections: PortfolioSections = {
+    ...DEFAULT_SECTIONS,
+    ...(config?.sections ?? {}),
+  };
+  const tagline = config?.tagline ?? "";
   const t = themeConfig[theme];
   const isDarkHero = theme === "modern";
 

@@ -6,6 +6,8 @@ import type {
   PublicPortfolio,
 } from "@/types";
 import { certificationsApi } from "./certifications";
+import { ApiError } from "./client";
+import { mapPortfolioConfig, mapPublicPortfolio } from "./mappers";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
@@ -81,7 +83,10 @@ export const portfolioApi = {
       return config;
     }
     const { apiClient } = await import("./client");
-    return apiClient<PortfolioConfig>(`/students/${studentId}/portfolio`);
+    const raw = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/portfolio`
+    );
+    return mapPortfolioConfig(raw, studentId);
   },
 
   async updateConfig(studentId: string, data: UpdatePortfolioData): Promise<PortfolioConfig> {
@@ -110,10 +115,14 @@ export const portfolioApi = {
       return store.portfolioConfigs[idx];
     }
     const { apiClient } = await import("./client");
-    return apiClient<PortfolioConfig>(`/students/${studentId}/portfolio`, {
-      method: "PATCH",
-      body: data,
-    });
+    const raw = await apiClient<Record<string, unknown>>(
+      `/students/${studentId}/portfolio`,
+      {
+        method: "PATCH",
+        body: data,
+      }
+    );
+    return mapPortfolioConfig(raw, studentId);
   },
 
   async getPublicBySlug(slug: string): Promise<PublicPortfolio | null> {
@@ -156,7 +165,13 @@ export const portfolioApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<PublicPortfolio | null>(`/portfolio/${slug}`);
+    try {
+      const raw = await apiClient<Record<string, unknown>>(`/portfolio/${slug}`);
+      return mapPublicPortfolio(raw);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
   },
 
   async isSlugAvailable(slug: string, studentId: string): Promise<boolean> {

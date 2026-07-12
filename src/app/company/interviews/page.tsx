@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -28,12 +29,14 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { InterviewInvitationCard } from "@/components/shared/InterviewInvitationCard";
+import { ViewToggle, type ViewMode } from "@/components/shared/ViewToggle";
+import { DataTable, type Column } from "@/components/shared/DataTable";
 import { contactRequestsApi } from "@/lib/api/contactRequests";
-import { interviewsApi } from "@/lib/api/interviews";
+import { interviewsApi, type InterviewWithDetails } from "@/lib/api/interviews";
 import { jobsApi } from "@/lib/api/jobs";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const inviteSchema = z.object({
   studentId: z.string().min(1),
@@ -50,6 +53,7 @@ export default function CompanyInterviewsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<ViewMode>("table");
 
   const form = useForm<InviteForm>({
     resolver: zodResolver(inviteSchema),
@@ -62,7 +66,11 @@ export default function CompanyInterviewsPage() {
     enabled: !!user,
   });
 
-  const { data: candidates = [], isLoading: candidatesLoading, isError: candidatesError } = useQuery({
+  const {
+    data: candidates = [],
+    isLoading: candidatesLoading,
+    isError: candidatesError,
+  } = useQuery({
     queryKey: ["company-candidates", user?.id],
     queryFn: () => contactRequestsApi.getAcceptedCandidates(user!.id),
     enabled: !!user,
@@ -110,13 +118,95 @@ export default function CompanyInterviewsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "completed" | "declined" }) =>
-      interviewsApi.updateStatus(user!.id, id, status),
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "completed" | "declined";
+    }) => interviewsApi.updateStatus(user!.id, id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company-interviews"] });
       toast({ title: "Interview updated" });
     },
   });
+
+  const columns: Column<InterviewWithDetails>[] = useMemo(
+    () => [
+      {
+        key: "candidate",
+        header: "Candidate",
+        sortable: true,
+        sortValue: (row) => row.student?.fullName ?? "",
+        exportValue: (row) => row.student?.fullName ?? row.studentId,
+        cell: (row) => (
+          <div>
+            <p className="font-semibold">{row.student?.fullName ?? "Student"}</p>
+            <p className="max-w-xs text-xs text-muted-foreground line-clamp-1">
+              {row.message}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "job",
+        header: "Job",
+        exportValue: (row) => row.job?.title ?? "",
+        cell: (row) => (
+          <span className="text-sm">{row.job?.title ?? "—"}</span>
+        ),
+      },
+      {
+        key: "scheduledAt",
+        header: "Scheduled",
+        sortable: true,
+        sortValue: (row) => row.scheduledAt,
+        exportValue: (row) => formatDate(row.scheduledAt),
+        cell: (row) => (
+          <span className="text-sm">{formatDate(row.scheduledAt)}</span>
+        ),
+      },
+      {
+        key: "location",
+        header: "Location",
+        exportValue: (row) => row.location,
+        cell: (row) => <span className="text-sm">{row.location}</span>,
+      },
+      {
+        key: "status",
+        header: "Status",
+        sortable: true,
+        sortValue: (row) => row.status,
+        exportValue: (row) => row.status,
+        cell: (row) => (
+          <Badge variant="outline" className="capitalize">
+            {row.status}
+          </Badge>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        cell: (row) =>
+          row.status === "accepted" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-full"
+              disabled={updateMutation.isPending}
+              onClick={() =>
+                updateMutation.mutate({ id: row.id, status: "completed" })
+              }
+            >
+              Mark completed
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+    ],
+    [updateMutation]
+  );
 
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
@@ -126,6 +216,7 @@ export default function CompanyInterviewsPage() {
         title="Interview Invitations"
         description="Schedule and track interviews with candidates"
       >
+        <ViewToggle value={view} onChange={setView} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 rounded-full">
@@ -171,7 +262,8 @@ export default function CompanyInterviewsPage() {
                   </p>
                 ) : acceptedCandidates.length === 0 ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Accept a contact request first to invite a candidate. Send one from a student profile in Find Talent.
+                    Accept a contact request first to invite a candidate. Send
+                    one from a student profile in Find Talent.
                   </p>
                 ) : null}
               </div>
@@ -185,17 +277,23 @@ export default function CompanyInterviewsPage() {
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobs.filter((j) => j.status === "open").map((j) => (
-                      <SelectItem key={j.id} value={j.id}>
-                        {j.title}
-                      </SelectItem>
-                    ))}
+                    {jobs
+                      .filter((j) => j.status === "open")
+                      .map((j) => (
+                        <SelectItem key={j.id} value={j.id}>
+                          {j.title}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Date & time</Label>
-                <Input type="datetime-local" className="mt-1.5" {...form.register("scheduledAt")} />
+                <Input
+                  type="datetime-local"
+                  className="mt-1.5"
+                  {...form.register("scheduledAt")}
+                />
               </div>
               <div>
                 <Label>Location</Label>
@@ -213,9 +311,15 @@ export default function CompanyInterviewsPage() {
               <Button
                 type="submit"
                 className="w-full rounded-full"
-                disabled={createMutation.isPending || candidatesLoading || acceptedCandidates.length === 0}
+                disabled={
+                  createMutation.isPending ||
+                  candidatesLoading ||
+                  acceptedCandidates.length === 0
+                }
               >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {createMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Send invitation
               </Button>
             </form>
@@ -226,16 +330,30 @@ export default function CompanyInterviewsPage() {
       {interviews.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Awaiting response", count: stats.pending, color: "text-amber-600" },
-            { label: "Upcoming", count: stats.upcoming, color: "text-emerald-600" },
-            { label: "Completed", count: stats.completed, color: "text-primary" },
+            {
+              label: "Awaiting response",
+              count: stats.pending,
+              color: "text-amber-600",
+            },
+            {
+              label: "Upcoming",
+              count: stats.upcoming,
+              color: "text-emerald-600",
+            },
+            {
+              label: "Completed",
+              count: stats.completed,
+              color: "text-primary",
+            },
           ].map((s) => (
             <div
               key={s.label}
               className="fancy-card rounded-2xl border border-border/50 p-4 !translate-y-0 !shadow-card"
             >
               <p className={cn("text-sm font-medium", s.color)}>● {s.label}</p>
-              <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">{s.count}</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+                {s.count}
+              </p>
             </div>
           ))}
         </div>
@@ -252,7 +370,7 @@ export default function CompanyInterviewsPage() {
               : undefined
           }
         />
-      ) : (
+      ) : view === "cards" ? (
         <div className="grid gap-5 lg:grid-cols-2">
           {interviews.map((inv) => (
             <InterviewInvitationCard
@@ -267,6 +385,14 @@ export default function CompanyInterviewsPage() {
             />
           ))}
         </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={interviews}
+          searchable
+          exportable
+          searchPlaceholder="Filter interviews..."
+        />
       )}
     </div>
   );

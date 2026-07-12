@@ -24,22 +24,19 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { AchievementCard, CertificationCard } from "@/components/shared/CredentialCard";
 import { certificationsApi } from "@/lib/api/certifications";
+import { filesApi } from "@/lib/api/files";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
+import { isRenderableImageUrl } from "@/lib/utils";
 import type { Achievement, Certification } from "@/types";
 
-const MOCK_CERT_IMAGES = [
-  "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&q=80",
-  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&q=80",
-  "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&q=80",
-];
-
 const certSchema = z.object({
-  title: z.string().min(2),
-  issuer: z.string().min(2),
-  issueDate: z.string().min(1),
-  credentialUrl: z.string().url().optional().or(z.literal("")),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  title: z.string().min(2, "Title is required"),
+  issuer: z.string().min(2, "Issuer is required"),
+  issueDate: z.string().min(1, "Issue date is required"),
+  // Optional — invalid values are cleared on submit instead of blocking save
+  credentialUrl: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 const achSchema = z.object({
@@ -131,12 +128,30 @@ export default function StudentCertificationsPage() {
 
   const saveCert = useMutation({
     mutationFn: (data: CertForm) => {
+      const pasted = (data.imageUrl ?? "").trim();
+      const preview = imagePreview?.startsWith("blob:") ? "" : imagePreview;
+      const candidate = pasted || preview || "";
+      const imageUrl =
+        candidate && isRenderableImageUrl(candidate) ? candidate : undefined;
+
+      const credential = (data.credentialUrl ?? "").trim();
+      const credentialUrl =
+        credential && z.string().url().safeParse(credential).success
+          ? credential
+          : undefined;
+      if (credential && !credentialUrl) {
+        toast({
+          title: "Credential URL skipped",
+          description: "Enter a full URL starting with https://, or leave it blank.",
+        });
+      }
+
       const payload = {
         title: data.title,
         issuer: data.issuer,
         issueDate: data.issueDate,
-        credentialUrl: data.credentialUrl || undefined,
-        imageUrl: data.imageUrl || imagePreview || undefined,
+        credentialUrl,
+        imageUrl,
       };
       if (editingCert) {
         return certificationsApi.update(user!.id, editingCert.id, payload);
@@ -150,6 +165,14 @@ export default function StudentCertificationsPage() {
       setEditingCert(null);
       setImagePreview(null);
       certForm.reset();
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to save certification",
+      });
     },
   });
 
@@ -187,36 +210,45 @@ export default function StudentCertificationsPage() {
     },
   });
 
-  const mockThumbnailUpload = () => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((p) => {
-        if (p === null || p >= 100) {
-          clearInterval(interval);
-          setUploadProgress(null);
-          const mockUrl =
-            MOCK_CERT_IMAGES[Math.floor(Math.random() * MOCK_CERT_IMAGES.length)];
-          setImagePreview(mockUrl);
-          certForm.setValue("imageUrl", mockUrl);
-          toast({ title: "Thumbnail uploaded", description: "Certificate image saved." });
-          return null;
-        }
-        return p + 25;
-      });
-    }, 150);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please choose an image file.", variant: "destructive" });
+      toast({
+        title: "Invalid file",
+        description: "Please choose an image file.",
+        variant: "destructive",
+      });
       return;
     }
+
     const preview = URL.createObjectURL(file);
     setImagePreview(preview);
-    mockThumbnailUpload();
-    e.target.value = "";
+    setUploadProgress(20);
+
+    try {
+      const uploaded = await filesApi.uploadProfilePhoto(file);
+      setUploadProgress(100);
+      URL.revokeObjectURL(preview);
+      setImagePreview(uploaded.url);
+      certForm.setValue("imageUrl", uploaded.url, { shouldValidate: true });
+      toast({
+        title: "Image uploaded",
+        description: "Certificate image saved.",
+      });
+    } catch (err) {
+      URL.revokeObjectURL(preview);
+      setImagePreview(certForm.getValues("imageUrl") || null);
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description:
+          err instanceof Error ? err.message : "Could not upload image",
+      });
+    } finally {
+      setUploadProgress(null);
+    }
   };
 
   useEffect(() => {
@@ -323,7 +355,23 @@ export default function StudentCertificationsPage() {
             </DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={certForm.handleSubmit((d) => saveCert.mutate(d))}
+            noValidate
+            onSubmit={certForm.handleSubmit(
+              (d) => saveCert.mutate(d),
+              (fieldErrors) => {
+                const first =
+                  fieldErrors.title?.message ||
+                  fieldErrors.issuer?.message ||
+                  fieldErrors.issueDate?.message ||
+                  fieldErrors.credentialUrl?.message ||
+                  "Please fix the highlighted fields.";
+                toast({
+                  variant: "destructive",
+                  title: "Cannot save certification",
+                  description: first,
+                });
+              }
+            )}
             className="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pr-1"
           >
             <div>
@@ -336,7 +384,10 @@ export default function StudentCertificationsPage() {
                       alt="Certificate thumbnail preview"
                       fill
                       className="object-cover"
-                      unoptimized={displayThumbnail.startsWith("blob:")}
+                      unoptimized={
+                        displayThumbnail.startsWith("blob:") ||
+                        displayThumbnail.includes("onrender.com")
+                      }
                     />
                   </div>
                 ) : (
@@ -399,21 +450,41 @@ export default function StudentCertificationsPage() {
                 />
               </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Title</Label>
               <Input {...certForm.register("title")} placeholder="AWS Cloud Practitioner" />
+              {certForm.formState.errors.title && (
+                <p className="text-xs text-destructive">
+                  {certForm.formState.errors.title.message}
+                </p>
+              )}
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Issuer</Label>
               <Input {...certForm.register("issuer")} placeholder="Amazon Web Services" />
+              {certForm.formState.errors.issuer && (
+                <p className="text-xs text-destructive">
+                  {certForm.formState.errors.issuer.message}
+                </p>
+              )}
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Issue Date</Label>
               <Input type="date" {...certForm.register("issueDate")} />
+              {certForm.formState.errors.issueDate && (
+                <p className="text-xs text-destructive">
+                  {certForm.formState.errors.issueDate.message}
+                </p>
+              )}
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Credential URL (optional)</Label>
               <Input {...certForm.register("credentialUrl")} placeholder="https://..." />
+              {certForm.formState.errors.credentialUrl && (
+                <p className="text-xs text-destructive">
+                  {certForm.formState.errors.credentialUrl.message}
+                </p>
+              )}
             </div>
             <Button type="submit" disabled={saveCert.isPending || uploadProgress !== null} className="w-full">
               {saveCert.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

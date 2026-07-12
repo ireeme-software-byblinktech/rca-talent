@@ -31,7 +31,7 @@ export default function CompanySearchPage() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [view, setView] = useState<ViewMode>("cards");
+  const [view, setView] = useState<ViewMode>("table");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [

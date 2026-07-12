@@ -169,13 +169,36 @@ export type JobType = "internship" | "full-time" | "freelance";
 export interface JobPosting {
   id: string;
   companyId: string;
+  companyName?: string;
   title: string;
   description: string;
   type: JobType;
   location: string;
   skills: string[];
   status: "open" | "closed";
+  compensation?: string;
+  isRemote?: boolean;
+  applicationCount?: number;
   createdAt: string;
+}
+
+export type JobApplicationStatus =
+  | "applied"
+  | "under_review"
+  | "accepted"
+  | "rejected"
+  | "withdrawn";
+
+export interface JobApplication {
+  id: string;
+  jobId: string;
+  studentId: string;
+  coverLetter?: string;
+  status: JobApplicationStatus;
+  createdAt: string;
+  reviewedAt?: string;
+  job?: JobPosting;
+  student?: StudentProfile;
 }
 
 export type InterviewStatus = "pending" | "accepted" | "declined" | "completed";

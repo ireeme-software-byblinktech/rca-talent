@@ -9,7 +9,11 @@ import type {
   ContactRequestWithDetails,
   InterviewInvitation,
   InterviewStatus,
+  PortfolioConfig,
+  PortfolioSections,
+  PortfolioTheme,
   Project,
+  PublicPortfolio,
   StudentProfile,
   StudentWithUser,
   User,
@@ -393,6 +397,18 @@ export function mapStudentUpdateToBackend(
 
 // ─── Job mappers ─────────────────────────────────────────────────────────────
 
+function inferJobType(
+  raw: Record<string, unknown>
+): import("@/types").JobType {
+  if (raw.type === "internship" || raw.type === "full-time" || raw.type === "freelance") {
+    return raw.type;
+  }
+  const title = String(raw.title ?? "").toLowerCase();
+  if (title.includes("intern")) return "internship";
+  if (title.includes("freelance") || title.includes("contract")) return "freelance";
+  return "full-time";
+}
+
 export function mapJobPosting(
   raw: Record<string, unknown>,
   companyId?: string
@@ -406,6 +422,7 @@ export function mapJobPosting(
   const companyProfile = raw.companyProfile as
     | Record<string, unknown>
     | undefined;
+  const count = raw._count as { applications?: number } | undefined;
 
   return {
     id: raw.id as string,
@@ -414,13 +431,54 @@ export function mapJobPosting(
       (raw.companyId as string) ??
       (companyProfile?.userId as string) ??
       "",
+    companyName: (companyProfile?.companyName as string | undefined) ?? undefined,
     title: (raw.title as string) ?? "",
     description: (raw.description as string) ?? "",
-    type: (raw.type as import("@/types").JobType) ?? "internship",
+    type: inferJobType(raw),
     location: (raw.location as string) ?? "",
     skills,
     status: raw.isActive === false || raw.status === "closed" ? "closed" : "open",
+    compensation: (raw.compensation as string | undefined) ?? undefined,
+    isRemote: Boolean(raw.isRemote),
+    applicationCount:
+      typeof count?.applications === "number"
+        ? count.applications
+        : typeof raw.applicationCount === "number"
+          ? (raw.applicationCount as number)
+          : undefined,
     createdAt: toIso(raw.createdAt as string | Date),
+  };
+}
+
+export function mapJobApplication(
+  raw: Record<string, unknown>
+): import("@/types").JobApplication {
+  const project = (raw.project ?? raw.job) as Record<string, unknown> | undefined;
+  const studentProfile = (raw.studentProfile ?? raw.student) as
+    | Record<string, unknown>
+    | undefined;
+  const statusRaw = String(raw.status ?? "APPLIED").toLowerCase();
+  const statusMap: Record<string, import("@/types").JobApplicationStatus> = {
+    applied: "applied",
+    under_review: "under_review",
+    underreview: "under_review",
+    accepted: "accepted",
+    rejected: "rejected",
+    withdrawn: "withdrawn",
+  };
+
+  return {
+    id: String(raw.id ?? ""),
+    jobId: String(raw.projectId ?? raw.jobId ?? project?.id ?? ""),
+    studentId: String(raw.studentId ?? studentProfile?.userId ?? ""),
+    coverLetter: (raw.coverLetter as string | undefined) ?? undefined,
+    status: statusMap[statusRaw] ?? "applied",
+    createdAt: toIso(raw.createdAt as string | Date),
+    reviewedAt: raw.reviewedAt
+      ? toIso(raw.reviewedAt as string | Date)
+      : undefined,
+    job: project ? mapJobPosting(project) : undefined,
+    student: studentProfile ? mapStudentProfile(studentProfile) : undefined,
   };
 }
 
@@ -687,4 +745,157 @@ export function mapAchievementToBackend(data: {
   if (data.date !== undefined) body.date = data.date;
 
   return body;
+}
+
+// ─── Portfolio mappers ───────────────────────────────────────────────────────
+
+const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSections = {
+  about: true,
+  skills: true,
+  projects: true,
+  certifications: true,
+  achievements: true,
+};
+
+function sectionVisible(value: unknown, fallback = true): boolean {
+  if (typeof value === "boolean") return value;
+  if (value && typeof value === "object" && "visible" in value) {
+    return Boolean((value as { visible: unknown }).visible);
+  }
+  return fallback;
+}
+
+export function mapPortfolioSections(raw: unknown): PortfolioSections {
+  const sections =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    about: sectionVisible(sections.about, DEFAULT_PORTFOLIO_SECTIONS.about),
+    skills: sectionVisible(sections.skills, DEFAULT_PORTFOLIO_SECTIONS.skills),
+    projects: sectionVisible(
+      sections.projects,
+      DEFAULT_PORTFOLIO_SECTIONS.projects
+    ),
+    certifications: sectionVisible(
+      sections.certifications,
+      DEFAULT_PORTFOLIO_SECTIONS.certifications
+    ),
+    achievements: sectionVisible(
+      sections.achievements,
+      DEFAULT_PORTFOLIO_SECTIONS.achievements
+    ),
+  };
+}
+
+export function mapPortfolioConfig(
+  raw: Record<string, unknown>,
+  studentUserId?: string
+): PortfolioConfig {
+  const profile = raw.studentProfile as Record<string, unknown> | undefined;
+  const themeRaw = String(raw.theme ?? "modern");
+  const theme: PortfolioTheme = (
+    ["classic", "modern", "minimal"] as PortfolioTheme[]
+  ).includes(themeRaw as PortfolioTheme)
+    ? (themeRaw as PortfolioTheme)
+    : "modern";
+
+  return {
+    studentId:
+      studentUserId ??
+      (raw.studentId as string | undefined) ??
+      (profile?.userId as string | undefined) ??
+      "",
+    slug: String(raw.slug ?? ""),
+    tagline: String(raw.tagline ?? ""),
+    theme,
+    sections: mapPortfolioSections(raw.sections),
+    projectOrder: Array.isArray(raw.projectOrder)
+      ? raw.projectOrder.map(String)
+      : [],
+    certificationOrder: Array.isArray(raw.certificationOrder)
+      ? raw.certificationOrder.map(String)
+      : [],
+    achievementOrder: Array.isArray(raw.achievementOrder)
+      ? raw.achievementOrder.map(String)
+      : [],
+    isPublished: Boolean(raw.isPublished),
+    updatedAt: toIso(raw.updatedAt as string | Date),
+  };
+}
+
+function orderByIds<T extends { id: string }>(items: T[], order: string[]): T[] {
+  const ids = order.length ? order : items.map((item) => item.id);
+  const sorted = ids
+    .map((id) => items.find((item) => item.id === id))
+    .filter(Boolean) as T[];
+  return [...sorted, ...items.filter((item) => !ids.includes(item.id))];
+}
+
+/** Map backend GET /portfolio/:slug (or already-shaped payload) → PublicPortfolio. */
+export function mapPublicPortfolio(
+  raw: Record<string, unknown>
+): PublicPortfolio | null {
+  // Already nested frontend shape
+  if (raw.config && raw.profile) {
+    const config = mapPortfolioConfig(raw.config as Record<string, unknown>);
+    const profile = mapStudentProfile(raw.profile as Record<string, unknown>);
+    const studentId = profile.userId || config.studentId;
+    return {
+      config: { ...config, studentId },
+      profile,
+      projects: Array.isArray(raw.projects)
+        ? (raw.projects as Record<string, unknown>[]).map((p) =>
+            mapProject(p, studentId)
+          )
+        : [],
+      certifications: Array.isArray(raw.certifications)
+        ? (raw.certifications as Record<string, unknown>[]).map((c) =>
+            mapCertification(c, studentId)
+          )
+        : [],
+      achievements: Array.isArray(raw.achievements)
+        ? (raw.achievements as Record<string, unknown>[]).map((a) =>
+            mapAchievement(a, studentId)
+          )
+        : [],
+    };
+  }
+
+  // Prisma PortfolioConfig + nested studentProfile
+  const studentProfile = raw.studentProfile as Record<string, unknown> | undefined;
+  if (!studentProfile) return null;
+
+  if (raw.isPublished === false) return null;
+
+  const profile = mapStudentProfile(studentProfile);
+  if (profile.verificationStatus !== "approved") return null;
+
+  const studentId = profile.userId;
+  const config = mapPortfolioConfig(raw, studentId);
+
+  const projects = orderByIds(
+    Array.isArray(studentProfile.projects)
+      ? (studentProfile.projects as Record<string, unknown>[]).map((p) =>
+          mapProject(p, studentId)
+        )
+      : [],
+    config.projectOrder
+  );
+  const certifications = orderByIds(
+    Array.isArray(studentProfile.certifications)
+      ? (studentProfile.certifications as Record<string, unknown>[]).map((c) =>
+          mapCertification(c, studentId)
+        )
+      : [],
+    config.certificationOrder
+  );
+  const achievements = orderByIds(
+    Array.isArray(studentProfile.achievements)
+      ? (studentProfile.achievements as Record<string, unknown>[]).map((a) =>
+          mapAchievement(a, studentId)
+        )
+      : [],
+    config.achievementOrder
+  );
+
+  return { config, profile, projects, certifications, achievements };
 }

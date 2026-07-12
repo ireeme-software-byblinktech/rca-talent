@@ -12,22 +12,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { certificationsApi } from "@/lib/api/certifications";
+import { filesApi } from "@/lib/api/files";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
+import { isRenderableImageUrl } from "@/lib/utils";
 import type { Certification } from "@/types";
 
-const MOCK_CERT_IMAGES = [
-  "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&q=80",
-  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&q=80",
-  "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&q=80",
-];
-
 const certSchema = z.object({
-  title: z.string().min(2),
-  issuer: z.string().min(2),
-  issueDate: z.string().min(1),
-  credentialUrl: z.string().url().optional().or(z.literal("")),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  title: z.string().min(2, "Title is required"),
+  issuer: z.string().min(2, "Issuer is required"),
+  issueDate: z.string().min(1, "Issue date is required"),
+  // Optional — invalid values are cleared on submit instead of blocking save
+  credentialUrl: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 type CertForm = z.infer<typeof certSchema>;
@@ -62,7 +59,13 @@ export function CertificationFormDialog({
           credentialUrl: certification.credentialUrl ?? "",
           imageUrl: certification.imageUrl ?? "",
         }
-      : undefined,
+      : {
+          title: "",
+          issuer: "",
+          issueDate: "",
+          credentialUrl: "",
+          imageUrl: "",
+        },
   });
 
   useEffect(() => {
@@ -78,14 +81,41 @@ export function CertificationFormDialog({
     }
   }, [certification, form]);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const mutation = useMutation({
     mutationFn: (data: CertForm) => {
+      const pasted = (data.imageUrl ?? "").trim();
+      const preview = imagePreview?.startsWith("blob:") ? "" : imagePreview;
+      const candidate = pasted || preview || "";
+      const imageUrl =
+        candidate && isRenderableImageUrl(candidate) ? candidate : undefined;
+
+      const credential = (data.credentialUrl ?? "").trim();
+      const credentialUrl =
+        credential && z.string().url().safeParse(credential).success
+          ? credential
+          : undefined;
+      if (credential && !credentialUrl) {
+        toast({
+          title: "Credential URL skipped",
+          description:
+            "Enter a full URL starting with https://, or leave it blank.",
+        });
+      }
+
       const payload = {
         title: data.title,
         issuer: data.issuer,
         issueDate: data.issueDate,
-        credentialUrl: data.credentialUrl || undefined,
-        imageUrl: data.imageUrl || imagePreview || undefined,
+        credentialUrl,
+        imageUrl,
       };
       return certification
         ? certificationsApi.update(user!.id, certification.id, payload)
@@ -94,71 +124,116 @@ export function CertificationFormDialog({
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["student-certifications"] });
       queryClient.invalidateQueries({ queryKey: ["public-portfolio"] });
-      toast({ title: certification ? "Certification updated" : "Certification added" });
+      toast({
+        title: certification ? "Certification updated" : "Certification added",
+      });
       onSuccess?.(result);
       onClose();
     },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to save certification",
+      });
+    },
   });
 
-  const mockThumbnailUpload = () => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((p) => {
-        if (p === null || p >= 100) {
-          clearInterval(interval);
-          setUploadProgress(null);
-          const mockUrl =
-            MOCK_CERT_IMAGES[Math.floor(Math.random() * MOCK_CERT_IMAGES.length)];
-          setImagePreview(mockUrl);
-          form.setValue("imageUrl", mockUrl);
-          toast({ title: "Thumbnail uploaded" });
-          return null;
-        }
-        return p + 25;
-      });
-    }, 150);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file?.type.startsWith("image/")) return;
-    setImagePreview(URL.createObjectURL(file));
-    mockThumbnailUpload();
     e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file",
+        description: "Please choose an image (JPEG, PNG, or WEBP).",
+      });
+      return;
+    }
+
+    const localPreview = URL.createObjectURL(file);
+    setImagePreview(localPreview);
+    setUploadProgress(20);
+
+    try {
+      const uploaded = await filesApi.uploadProfilePhoto(file);
+      setUploadProgress(100);
+      if (localPreview.startsWith("blob:")) URL.revokeObjectURL(localPreview);
+      setImagePreview(uploaded.url);
+      form.setValue("imageUrl", uploaded.url, { shouldValidate: true });
+      toast({ title: "Image uploaded" });
+    } catch (err) {
+      if (localPreview.startsWith("blob:")) URL.revokeObjectURL(localPreview);
+      setImagePreview(form.getValues("imageUrl") || null);
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description:
+          err instanceof Error ? err.message : "Could not upload image",
+      });
+    } finally {
+      setUploadProgress(null);
+    }
   };
 
   const watchedImageUrl = form.watch("imageUrl");
   const displayThumbnail = imagePreview || watchedImageUrl || null;
+  const errors = form.formState.errors;
 
   return (
     <form
-      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      noValidate
+      onSubmit={form.handleSubmit(
+        (d) => mutation.mutate(d),
+        (fieldErrors) => {
+          const first =
+            fieldErrors.title?.message ||
+            fieldErrors.issuer?.message ||
+            fieldErrors.issueDate?.message ||
+            fieldErrors.credentialUrl?.message ||
+            "Please fix the highlighted fields.";
+          toast({
+            variant: "destructive",
+            title: "Cannot save certification",
+            description: first,
+          });
+        }
+      )}
       className="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pr-1"
     >
       <div>
         <Label>Thumbnail image</Label>
         <div className="mt-2 rounded-xl border border-dashed border-border/60 bg-muted/30 p-4">
           {displayThumbnail ? (
-            <div className="relative mx-auto aspect-[4/3] w-full max-h-36 overflow-hidden rounded-lg">
+            <div className="relative mx-auto aspect-[4/3] max-h-36 w-full overflow-hidden rounded-lg">
               <Image
                 src={displayThumbnail}
                 alt="Certificate thumbnail"
                 fill
                 className="object-cover"
-                unoptimized={displayThumbnail.startsWith("blob:")}
+                unoptimized={
+                  displayThumbnail.startsWith("blob:") ||
+                  displayThumbnail.includes("onrender.com")
+                }
               />
             </div>
           ) : (
             <div className="flex flex-col items-center py-6 text-center">
               <ImageIcon className="h-10 w-10 text-muted-foreground/60" />
-              <p className="mt-2 text-sm text-muted-foreground">Upload certificate image</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Upload certificate image
+              </p>
             </div>
           )}
-          {uploadProgress !== null && <Progress value={uploadProgress} className="mt-3 h-1.5" />}
+          {uploadProgress !== null && (
+            <Progress value={uploadProgress} className="mt-3 h-1.5" />
+          )}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/jpg"
             className="hidden"
             onChange={handleFileSelect}
           />
@@ -180,6 +255,9 @@ export function CertificationFormDialog({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  if (imagePreview?.startsWith("blob:")) {
+                    URL.revokeObjectURL(imagePreview);
+                  }
                   setImagePreview(null);
                   form.setValue("imageUrl", "");
                 }}
@@ -196,25 +274,42 @@ export function CertificationFormDialog({
           onChange={(e) => {
             const value = e.target.value;
             form.setValue("imageUrl", value);
-            if (value) setImagePreview(value);
+            setImagePreview(value || null);
           }}
         />
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Title</Label>
         <Input {...form.register("title")} placeholder="AWS Cloud Practitioner" />
+        {errors.title && (
+          <p className="text-xs text-destructive">{errors.title.message}</p>
+        )}
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Issuer</Label>
         <Input {...form.register("issuer")} placeholder="Amazon Web Services" />
+        {errors.issuer && (
+          <p className="text-xs text-destructive">{errors.issuer.message}</p>
+        )}
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Issue Date</Label>
         <Input type="date" {...form.register("issueDate")} />
+        {errors.issueDate && (
+          <p className="text-xs text-destructive">{errors.issueDate.message}</p>
+        )}
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Credential URL (optional)</Label>
-        <Input {...form.register("credentialUrl")} placeholder="https://..." />
+        <Input
+          {...form.register("credentialUrl")}
+          placeholder="https://..."
+        />
+        {errors.credentialUrl && (
+          <p className="text-xs text-destructive">
+            {errors.credentialUrl.message}
+          </p>
+        )}
       </div>
       <Button
         type="submit"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ContractCard } from "@/components/shared/ContractCard";
 import { ContractDetailDialog } from "@/components/shared/ContractDetailDialog";
+import { ViewToggle, type ViewMode } from "@/components/shared/ViewToggle";
+import { DataTable, type Column } from "@/components/shared/DataTable";
 import { downloadContractPdf } from "@/lib/contractPdf";
 import type { SignatureResult } from "@/components/shared/SignaturePad";
 import { contactRequestsApi } from "@/lib/api/contactRequests";
@@ -36,6 +39,7 @@ import { contractsApi } from "@/lib/api/contracts";
 import { jobsApi } from "@/lib/api/jobs";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/utils";
 import type { ContractWithDetails } from "@/types";
 
 const DEFAULT_TERMS = `This Employment Agreement ("Agreement") is entered into between the Employer and the Employee.
@@ -71,6 +75,7 @@ export default function CompanyContractsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<ContractWithDetails | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [view, setView] = useState<ViewMode>("table");
 
   const form = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
@@ -118,7 +123,10 @@ export default function CompanyContractsPage() {
           setDetailOpen(true);
         }
       });
-      toast({ title: "Contract drafted", description: "Sign and send to the student." });
+      toast({
+        title: "Contract drafted",
+        description: "Sign and send to the student.",
+      });
     },
     onError: (err) => {
       toast({
@@ -139,7 +147,10 @@ export default function CompanyContractsPage() {
     }) => contractsApi.signAndSend(user!.id, contractId, sig),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company-contracts"] });
-      toast({ title: "Contract sent", description: "The student can now sign digitally." });
+      toast({
+        title: "Contract sent",
+        description: "The student can now sign digitally.",
+      });
       setDetailOpen(false);
       setSelected(null);
     },
@@ -153,7 +164,8 @@ export default function CompanyContractsPage() {
   });
 
   const voidMutation = useMutation({
-    mutationFn: (contractId: string) => contractsApi.voidContract(user!.id, contractId),
+    mutationFn: (contractId: string) =>
+      contractsApi.voidContract(user!.id, contractId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company-contracts"] });
       toast({ title: "Contract voided" });
@@ -174,6 +186,91 @@ export default function CompanyContractsPage() {
     setDetailOpen(true);
   };
 
+  const columns: Column<ContractWithDetails>[] = useMemo(
+    () => [
+      {
+        key: "title",
+        header: "Contract",
+        sortable: true,
+        sortValue: (row) => row.title,
+        exportValue: (row) => row.title,
+        cell: (row) => (
+          <div>
+            <p className="font-semibold">{row.title}</p>
+            <p className="text-xs text-muted-foreground">{row.role}</p>
+          </div>
+        ),
+      },
+      {
+        key: "student",
+        header: "Candidate",
+        sortable: true,
+        sortValue: (row) => row.student?.fullName ?? "",
+        exportValue: (row) => row.student?.fullName ?? row.studentId,
+        cell: (row) => (
+          <span className="text-sm">{row.student?.fullName ?? "—"}</span>
+        ),
+      },
+      {
+        key: "startDate",
+        header: "Start date",
+        sortable: true,
+        sortValue: (row) => row.startDate,
+        exportValue: (row) => row.startDate,
+        cell: (row) => (
+          <span className="text-sm">{formatDate(row.startDate)}</span>
+        ),
+      },
+      {
+        key: "compensation",
+        header: "Compensation",
+        exportValue: (row) => row.compensation,
+        cell: (row) => <span className="text-sm">{row.compensation}</span>,
+      },
+      {
+        key: "status",
+        header: "Status",
+        sortable: true,
+        sortValue: (row) => row.status,
+        exportValue: (row) => row.status,
+        cell: (row) => (
+          <Badge variant="outline" className="capitalize">
+            {row.status.replace(/_/g, " ")}
+          </Badge>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        cell: (row) => (
+          <div className="flex flex-wrap gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-full"
+              onClick={() => openContract(row)}
+            >
+              View
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-full"
+              onClick={() =>
+                row.status === "draft"
+                  ? openContract(row)
+                  : downloadContractPdf(row)
+              }
+            >
+              {row.status === "draft" ? "Sign & send" : "PDF"}
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
   return (
@@ -182,9 +279,13 @@ export default function CompanyContractsPage() {
         title="Contracts"
         description="Create employment agreements and collect digital signatures"
       >
+        <ViewToggle value={view} onChange={setView} />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="rounded-full gap-2" disabled={candidatesLoading || acceptedCandidates.length === 0}>
+            <Button
+              className="gap-2 rounded-full"
+              disabled={candidatesLoading || acceptedCandidates.length === 0}
+            >
               <Plus className="h-4 w-4" />
               New contract
             </Button>
@@ -219,7 +320,8 @@ export default function CompanyContractsPage() {
                 </Select>
                 {acceptedCandidates.length === 0 && !candidatesLoading && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Accept a contact request first. Send one from a student profile in Find Talent.
+                    Accept a contact request first. Send one from a student
+                    profile in Find Talent.
                   </p>
                 )}
               </div>
@@ -248,12 +350,20 @@ export default function CompanyContractsPage() {
               </div>
               <div>
                 <Label>Role</Label>
-                <Input className="mt-1.5" placeholder="Junior Developer" {...form.register("role")} />
+                <Input
+                  className="mt-1.5"
+                  placeholder="Junior Developer"
+                  {...form.register("role")}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Start date</Label>
-                  <Input type="date" className="mt-1.5" {...form.register("startDate")} />
+                  <Input
+                    type="date"
+                    className="mt-1.5"
+                    {...form.register("startDate")}
+                  />
                 </div>
                 <div>
                   <Label>Compensation</Label>
@@ -266,14 +376,24 @@ export default function CompanyContractsPage() {
               </div>
               <div>
                 <Label>Terms & conditions</Label>
-                <Textarea rows={8} className="mt-1.5 font-mono text-xs" {...form.register("terms")} />
+                <Textarea
+                  rows={8}
+                  className="mt-1.5 font-mono text-xs"
+                  {...form.register("terms")}
+                />
               </div>
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createMutation.isPending || candidatesLoading || acceptedCandidates.length === 0}
+                disabled={
+                  createMutation.isPending ||
+                  candidatesLoading ||
+                  acceptedCandidates.length === 0
+                }
               >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {createMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Create draft
               </Button>
             </form>
@@ -296,7 +416,7 @@ export default function CompanyContractsPage() {
               : undefined
           }
         />
-      ) : (
+      ) : view === "cards" ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {contracts.map((contract) => (
             <ContractCard
@@ -315,6 +435,14 @@ export default function CompanyContractsPage() {
             />
           ))}
         </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={contracts}
+          searchable
+          exportable
+          searchPlaceholder="Filter contracts..."
+        />
       )}
 
       <ContractDetailDialog
