@@ -17,6 +17,7 @@ import type {
   VerificationStatus,
 } from "@/types";
 import { debugProfile } from "@/lib/debug/profile-debug";
+import { resolveMediaUrl } from "@/lib/config/env";
 
 // ─── Backend response shapes (partial) ───────────────────────────────────────
 
@@ -187,8 +188,10 @@ export function mapStudentProfile(raw: Record<string, unknown>): StudentProfile 
       portfolio:
         linksRaw?.portfolio ?? (raw.portfolioUrl as string) ?? undefined,
     },
-    photoUrl: (raw.avatarUrl as string) ?? (raw.photoUrl as string),
-    cvUrl: raw.cvUrl as string | undefined,
+    photoUrl: resolveMediaUrl(
+      (raw.avatarUrl as string) ?? (raw.photoUrl as string)
+    ),
+    cvUrl: resolveMediaUrl(raw.cvUrl as string | undefined),
     verificationStatus: mapVerificationStatus(
       (raw.verificationStatus as string) ?? "PENDING"
     ),
