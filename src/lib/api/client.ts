@@ -133,7 +133,11 @@ export async function apiClient<T>(
       requestHeaders["Content-Type"] = "application/json";
     }
 
-    return fetch(`${env.apiUrl}${endpoint}`, config);
+    // Construct URL properly: ensure endpoint doesn't start with /
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+    const baseUrl = env.apiUrl.endsWith("/") ? env.apiUrl : `${env.apiUrl}/`;
+    const url = `${baseUrl}${cleanEndpoint}`;
+    return fetch(url, config);
   };
 
   let activeToken = token ?? authToken;

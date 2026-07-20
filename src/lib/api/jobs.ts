@@ -36,7 +36,7 @@ export const jobsApi = {
       return getStore().jobPostings.filter((j) => j.status === "open");
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/jobs/open");
+    const raw = await apiClient<Record<string, unknown>[]>("jobs/open");
     return raw.map((job) => mapJobPosting(job));
   },
 

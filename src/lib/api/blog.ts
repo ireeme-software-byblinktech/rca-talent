@@ -45,7 +45,7 @@ export const blogApi = {
         );
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/blog");
+    const raw = await apiClient<Record<string, unknown>[]>("blog");
     return raw.map(mapBlogPost);
   },
 
@@ -58,7 +58,7 @@ export const blogApi = {
       );
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/admin/blog");
+    const raw = await apiClient<Record<string, unknown>[]>("admin/blog");
     return raw.map((post) => mapBlogPost(post));
   },
 
@@ -69,7 +69,7 @@ export const blogApi = {
       return post?.published ? post : null;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown> | null>(`/blog/${slug}`);
+    const raw = await apiClient<Record<string, unknown> | null>(`blog/${slug}`);
     return raw ? mapBlogPost(raw) : null;
   },
 
@@ -79,7 +79,7 @@ export const blogApi = {
       return getStore().blogPosts.find((p) => p.slug === slug) ?? null;
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogPost | null>(`/admin/blog/${slug}`);
+    return apiClient<BlogPost | null>(`admin/blog/${slug}`);
   },
 
   async create(data: CreateBlogPostData): Promise<BlogPost> {
@@ -97,7 +97,7 @@ export const blogApi = {
       return post;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/admin/blog", {
+    const raw = await apiClient<Record<string, unknown>>("admin/blog", {
       method: "POST",
       body: data,
     });
@@ -118,7 +118,7 @@ export const blogApi = {
       return store.blogPosts[idx];
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>(`/admin/blog/${id}`, {
+    const raw = await apiClient<Record<string, unknown>>(`admin/blog/${id}`, {
       method: "PATCH",
       body: data,
     });
@@ -133,7 +133,7 @@ export const blogApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>(`/admin/blog/${id}`, { method: "DELETE" });
+    return apiClient<void>(`admin/blog/${id}`, { method: "DELETE" });
   },
 
   async subscribe(email: string, userId?: string): Promise<BlogSubscriber> {
@@ -159,7 +159,7 @@ export const blogApi = {
       return sub;
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogSubscriber>("/blog/subscribe", {
+    return apiClient<BlogSubscriber>("blog/subscribe", {
       method: "POST",
       body: { email, userId },
     });
@@ -176,7 +176,7 @@ export const blogApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>("/blog/unsubscribe", {
+    return apiClient<void>("blog/unsubscribe", {
       method: "POST",
       body: { email },
     });
@@ -190,7 +190,7 @@ export const blogApi = {
       );
     }
     const { apiClient } = await import("./client");
-    return apiClient<boolean>(`/blog/subscribe/status?email=${encodeURIComponent(email)}`);
+    return apiClient<boolean>(`blog/subscribe/status?email=${encodeURIComponent(email)}`);
   },
 
   async getSubscriberCount(): Promise<number> {
@@ -199,6 +199,6 @@ export const blogApi = {
       return getStore().blogSubscribers.filter((s) => s.active).length;
     }
     const { apiClient } = await import("./client");
-    return apiClient<number>("/admin/blog/subscribers/count");
+    return apiClient<number>("admin/blog/subscribers/count");
   },
 };

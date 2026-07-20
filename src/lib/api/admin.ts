@@ -41,7 +41,7 @@ export const adminApi = {
       };
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/admin/metrics");
+    const raw = await apiClient<Record<string, unknown>>("admin/metrics");
     return {
       totalStudents: (raw.totalStudents as number) ?? 0,
       approvedStudents: (raw.approvedStudents as number) ?? 0,
@@ -303,7 +303,7 @@ export const adminApi = {
       }));
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/admin/students");
+    const raw = await apiClient<Record<string, unknown>[]>("admin/students");
     return raw.map(mapStudentWithUser);
   },
 
@@ -317,7 +317,7 @@ export const adminApi = {
       }));
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>[]>("/admin/companies");
+    const raw = await apiClient<Record<string, unknown>[]>("admin/companies");
     return raw.map(mapCompanyWithUser);
   },
 
@@ -327,7 +327,7 @@ export const adminApi = {
       return mockAnalytics;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/admin/analytics");
+    const raw = await apiClient<Record<string, unknown>>("admin/analytics");
     return {
       growth: Array.isArray(raw.growth) ? (raw.growth as PlatformAnalytics["growth"]) : [],
       topSkills: Array.isArray(raw.topSkills)
@@ -537,6 +537,6 @@ export const adminApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<Record<string, unknown>>("/admin/reports/platform");
+    return apiClient<Record<string, unknown>>("admin/reports/platform");
   },
 };

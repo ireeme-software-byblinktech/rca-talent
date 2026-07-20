@@ -60,7 +60,7 @@ export const platformApi = {
 
     try {
       const { apiClient } = await import("./client");
-      return await apiClient<PublicPlatformStats>("/platform/stats");
+      return await apiClient<PublicPlatformStats>("platform/stats");
     } catch {
       return EMPTY_PLATFORM_STATS;
     }

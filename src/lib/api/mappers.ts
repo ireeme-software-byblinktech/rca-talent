@@ -483,13 +483,16 @@ export function mapJobApplication(
 }
 
 export function mapJobToBackend(
-  data: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {};
-  if (data.title !== undefined) body.title = data.title;
-  if (data.description !== undefined) body.description = data.description;
-  if (data.location !== undefined) body.location = data.location;
-  if (data.status !== undefined) body.status = data.status;
+  if ('title' in data && data.title !== undefined) body.title = data.title;
+  if ('description' in data && data.description !== undefined) body.description = data.description;
+  if ('location' in data && data.location !== undefined) body.location = data.location;
+  if ('status' in data && data.status !== undefined) body.status = data.status;
+  if ('type' in data && data.type !== undefined) body.type = data.type;
+  if ('skills' in data && data.skills !== undefined) body.skills = data.skills;
   return body;
 }
 
