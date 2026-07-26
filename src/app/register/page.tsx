@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { COHORT_YEARS, INDUSTRY_OPTIONS } from "@/lib/mock/data";
@@ -232,9 +233,9 @@ function RegisterForm() {
                     <label htmlFor="password" className="text-sm font-semibold text-gray-700">
                       Password
                     </label>
-                    <input
+                    <PasswordInput
                       id="password"
-                      type="password"
+                      label=""
                       placeholder="Create password"
                       className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
                       {...studentForm.register("password")}
@@ -318,9 +319,9 @@ function RegisterForm() {
                     <label htmlFor="companyPassword" className="text-sm font-semibold text-gray-700">
                       Password
                     </label>
-                    <input
+                    <PasswordInput
                       id="companyPassword"
-                      type="password"
+                      label=""
                       placeholder="Create password"
                       className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A2B4B] focus:border-transparent transition-all text-sm"
                       {...companyForm.register("password")}

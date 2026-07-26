@@ -35,7 +35,6 @@ function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -58,12 +57,6 @@ function LoginForm() {
       setIsSubmitting(false);
     }
   };
-
-  const demoAccounts = [
-    { label: "Student", email: "alice@student.rw" },
-    { label: "Company", email: "hr@techkigali.rw" },
-    { label: "Admin", email: "admin@rca.rw" },
-  ];
 
   return (
     <div className="flex min-h-screen bg-gray-50 items-center justify-center p-4">
@@ -187,27 +180,6 @@ function LoginForm() {
                   Login
                 </Button>
               </form>
-
-              <div className="mt-5 rounded-xl bg-blue-50 border border-blue-100 p-3.5">
-                <p className="text-xs font-semibold text-gray-600 mb-2">
-                  Quick demo (password: password123)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {demoAccounts.map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      className="rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-[#1A2B4B] border border-gray-200 hover:bg-[#1A2B4B] hover:text-white transition-colors"
-                      onClick={() => {
-                        setValue("email", acc.email);
-                        setValue("password", "password123");
-                      }}
-                    >
-                      {acc.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <p className="mt-6 text-center text-sm text-gray-600">
                 New here?{" "}
