@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 
-const PORT = Number(process.argv[2] ?? 3000);
+const PORT = Number(process.argv[2] ?? 3001);
 
 function freePort(port) {
   if (process.platform !== "win32") {
