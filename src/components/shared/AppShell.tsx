@@ -421,11 +421,11 @@ export function AppShell({ children, role, title }: AppShellProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border/60 bg-muted/40 shadow-elevated transition-transform lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border/60 bg-card shadow-2xl transition-transform lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border/60 bg-card/80 px-5">
+        <div className="flex h-16 items-center justify-between border-b border-border/60 bg-card px-5">
           <Link href="/" className="flex items-center gap-2.5">
             <RCALogo size="sm" />
             <span className="text-sm font-semibold text-foreground">
@@ -485,7 +485,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
           })}
         </nav>
  
-        <div className="border-t border-border/60 bg-card/80 p-4 flex flex-col gap-2">
+        <div className="border-t border-border/60 bg-card p-4 flex flex-col gap-2">
           <div className="flex items-center gap-3 px-3 py-2">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
