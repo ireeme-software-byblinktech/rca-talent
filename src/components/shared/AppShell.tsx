@@ -290,6 +290,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
         },
         {
           kind: "link",
+          href: "/admin/project-reviews",
+          label: "Project Reviews",
+          icon: <FolderKanban className="h-4 w-4" />,
+        },
+        {
+          kind: "link",
           href: "/admin/reports",
           label: "Reports",
           icon: <FileBarChart className="h-4 w-4" />,
@@ -393,9 +399,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
           "flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-all",
           nested && "rounded-xl",
           active
-            ? nested
-              ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
-              : "sidebar-nav-active"
+            ? "sidebar-nav-active"
             : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
         )}
       >
@@ -456,8 +460,8 @@ export function AppShell({ children, role, title }: AppShellProps) {
                   onClick={() => toggleGroup(entry.id)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-all",
-                    childActive || expanded
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                    childActive
+                      ? "text-[#1A2B4B] font-bold bg-secondary/50"
                       : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                   )}
                 >
@@ -465,12 +469,12 @@ export function AppShell({ children, role, title }: AppShellProps) {
                   <span className="flex-1 truncate text-left">{entry.label}</span>
                   <ChevronDown
                     className={cn(
-                      "h-4 w-4 shrink-0 opacity-80 transition-transform",
+                       "h-4 w-4 shrink-0 opacity-80 transition-transform",
                       expanded && "rotate-180"
                     )}
                   />
                 </button>
-
+ 
                 {expanded && (
                   <div className="relative ml-5 space-y-0.5 border-l border-border/70 pl-3">
                     {entry.children.map((child) => renderLink(child, true))}
@@ -480,8 +484,8 @@ export function AppShell({ children, role, title }: AppShellProps) {
             );
           })}
         </nav>
-
-        <div className="border-t border-border/60 bg-card/80 p-4">
+ 
+        <div className="border-t border-border/60 bg-card/80 p-4 flex flex-col gap-2">
           <div className="flex items-center gap-3 px-3 py-2">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -494,7 +498,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="mt-2 w-full justify-start gap-2 text-muted-foreground"
+            className="w-full justify-start gap-2 text-muted-foreground"
             onClick={() => logout()}
           >
             <LogOut className="h-4 w-4" />
