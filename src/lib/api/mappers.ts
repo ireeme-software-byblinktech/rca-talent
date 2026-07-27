@@ -491,6 +491,8 @@ export function mapJobToBackend(
   if (d.description !== undefined) body.description = d.description;
   if (d.location !== undefined) body.location = d.location;
   if (d.status !== undefined) body.status = d.status;
+  if (d.type !== undefined) body.type = d.type;
+  if (d.skills !== undefined) body.skills = d.skills;
   return body;
 }
 
