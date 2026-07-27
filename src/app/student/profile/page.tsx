@@ -1,9 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Loader2, Upload, X, FileText, ExternalLink, User } from "lucide-react";
+import { Loader2, Plus, Upload, X, FileText, ExternalLink, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,16 @@ import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { COHORT_YEARS, SKILL_OPTIONS } from "@/lib/mock/data";
 import type { Availability } from "@/types";
+
+const MAX_CUSTOM_SKILL_LENGTH = 40;
+
+function normalizeSkillName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function skillsEqual(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
 
 type ProfileForm = {
   fullName: string;
@@ -57,6 +67,7 @@ export default function StudentProfilePage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [customSkill, setCustomSkill] = useState("");
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
@@ -71,6 +82,34 @@ export default function StudentProfilePage() {
     queryFn: () => studentsApi.getProfile(user!.id),
     enabled: !!user,
   });
+
+  const { data: catalogSkills = SKILL_OPTIONS } = useQuery({
+    queryKey: ["available-skills"],
+    queryFn: () => studentsApi.getAvailableSkills(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const skillOptions = useMemo(() => {
+    const merged = new Map<string, string>();
+    for (const skill of [...catalogSkills, ...SKILL_OPTIONS, ...selectedSkills]) {
+      const normalized = normalizeSkillName(skill);
+      if (!normalized) continue;
+      const key = normalized.toLowerCase();
+      if (!merged.has(key)) merged.set(key, normalized);
+    }
+    return Array.from(merged.values()).sort((a, b) => a.localeCompare(b));
+  }, [catalogSkills, selectedSkills]);
+
+  const listedSkills = useMemo(() => {
+    const merged = new Map<string, string>();
+    for (const skill of [...catalogSkills, ...SKILL_OPTIONS]) {
+      const normalized = normalizeSkillName(skill);
+      if (!normalized) continue;
+      const key = normalized.toLowerCase();
+      if (!merged.has(key)) merged.set(key, normalized);
+    }
+    return merged;
+  }, [catalogSkills]);
 
   const form = useForm<ProfileForm>({
     values: profile
@@ -244,9 +283,63 @@ export default function StudentProfilePage() {
   };
 
   const toggleSkill = (skill: string) => {
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    );
+    const normalized = normalizeSkillName(skill);
+    if (!normalized) return;
+    setSelectedSkills((prev) => {
+      const exists = prev.some((s) => skillsEqual(s, normalized));
+      return exists
+        ? prev.filter((s) => !skillsEqual(s, normalized))
+        : [...prev, normalized];
+    });
+  };
+
+  const addCustomSkill = () => {
+    const normalized = normalizeSkillName(customSkill);
+    if (!normalized) {
+      toast({
+        variant: "destructive",
+        title: "Enter a skill name",
+      });
+      return;
+    }
+    if (normalized.length > MAX_CUSTOM_SKILL_LENGTH) {
+      toast({
+        variant: "destructive",
+        title: "Skill name too long",
+        description: `Keep it under ${MAX_CUSTOM_SKILL_LENGTH} characters.`,
+      });
+      return;
+    }
+
+    const listedMatch = listedSkills.get(normalized.toLowerCase());
+    if (listedMatch) {
+      if (selectedSkills.some((s) => skillsEqual(s, listedMatch))) {
+        toast({
+          title: "Already selected",
+          description: `"${listedMatch}" is already in your skills.`,
+        });
+      } else {
+        setSelectedSkills((prev) => [...prev, listedMatch]);
+        toast({
+          title: "Skill already listed",
+          description: `"${listedMatch}" is already on the list, so it was selected for you.`,
+        });
+      }
+      setCustomSkill("");
+      return;
+    }
+
+    if (selectedSkills.some((s) => skillsEqual(s, normalized))) {
+      toast({
+        title: "Already selected",
+        description: `"${normalized}" is already in your skills.`,
+      });
+      setCustomSkill("");
+      return;
+    }
+
+    setSelectedSkills((prev) => [...prev, normalized]);
+    setCustomSkill("");
   };
 
   const toggleAvailability = (a: Availability) => {
@@ -360,22 +453,49 @@ export default function StudentProfilePage() {
               <div className="space-y-2">
                 <Label>Skills (select at least 3)</Label>
                 <div className="flex flex-wrap gap-2">
-                  {SKILL_OPTIONS.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant={selectedSkills.includes(skill) ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => toggleSkill(skill)}
-                    >
-                      {skill}
-                      {selectedSkills.includes(skill) && (
-                        <X className="ml-1 h-3 w-3" />
-                      )}
-                    </Badge>
-                  ))}
+                  {skillOptions.map((skill) => {
+                    const selected = selectedSkills.some((s) =>
+                      skillsEqual(s, skill)
+                    );
+                    return (
+                      <Badge
+                        key={skill}
+                        variant={selected ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => toggleSkill(skill)}
+                      >
+                        {skill}
+                        {selected && <X className="ml-1 h-3 w-3" />}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={customSkill}
+                    onChange={(e) => setCustomSkill(e.target.value)}
+                    placeholder="Add a skill not listed…"
+                    maxLength={MAX_CUSTOM_SKILL_LENGTH}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomSkill();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full shrink-0"
+                    onClick={addCustomSkill}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Add skill
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {selectedSkills.length} selected — click Save profile to keep your skills.
+                  You can add skills that aren&apos;t in the list.
                 </p>
               </div>
               <div className="space-y-2">

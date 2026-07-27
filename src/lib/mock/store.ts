@@ -36,6 +36,7 @@ import type {
   PortfolioConfig,
   Project,
   StudentProfile,
+  SupportTicket,
   User,
 } from "@/types";
 
@@ -62,6 +63,7 @@ class MockStore {
   blogPosts: BlogPost[] = clone(mockBlogPosts);
   blogSubscribers: BlogSubscriber[] = clone(mockBlogSubscribers);
   portfolioConfigs: PortfolioConfig[] = clone(mockPortfolioConfigs);
+  supportTickets: SupportTicket[] = [];
 }
 
 let store: MockStore | null = null;

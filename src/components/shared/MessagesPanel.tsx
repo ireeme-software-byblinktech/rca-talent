@@ -13,7 +13,9 @@ import {
   type ConversationWithParticipant,
   type MessageableContact,
 } from "@/lib/api/messages";
+import { useMessagesSocket } from "@/hooks/useMessagesSocket";
 import { cn, formatRelativeDate } from "@/lib/utils";
+import type { Message } from "@/types";
 
 interface MessagesPanelProps {
   userId: string;
@@ -80,10 +82,36 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const { connected: socketConnected } = useMessagesSocket({
+    userId,
+    onMessageNew: (incoming) => {
+      const isParticipant =
+        incoming.senderId === userId || incoming.recipientId === userId;
+      if (!isParticipant) return;
+
+      queryClient.setQueryData<Message[]>(
+        ["messages", incoming.conversationId, userId],
+        (current) => {
+          if (!current) return [incoming];
+          if (current.some((m) => m.id === incoming.id)) return current;
+          return [...current, incoming];
+        }
+      );
+
+      void queryClient.invalidateQueries({
+        queryKey: ["conversations", userId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["message-contacts", userId],
+      });
+    },
+  });
+
   const { data: conversations = [], isLoading: convosLoading } = useQuery({
     queryKey: ["conversations", userId],
     queryFn: () => messagesApi.getConversations(userId),
     enabled: !!userId,
+    refetchInterval: socketConnected ? false : 8_000,
   });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
@@ -104,6 +132,7 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
     queryKey: ["messages", activeConvId, userId],
     queryFn: () => messagesApi.getMessages(activeConvId!, userId),
     enabled: !!activeConvId && !!userId,
+    refetchInterval: socketConnected ? false : 5_000,
   });
 
   const sendMutation = useMutation({
@@ -119,13 +148,17 @@ export function MessagesPanel({ userId }: MessagesPanelProps) {
       await queryClient.invalidateQueries({ queryKey: ["conversations", userId] });
       await queryClient.invalidateQueries({ queryKey: ["message-contacts", userId] });
       if (activeConvId) {
-        queryClient.invalidateQueries({ queryKey: ["messages", activeConvId] });
+        queryClient.invalidateQueries({
+          queryKey: ["messages", activeConvId, userId],
+        });
       } else {
         const updated = await messagesApi.getConversations(userId);
         const match = updated.find((c) => c.otherUser.id === activeOtherUserId);
         if (match) {
           setActiveOtherUserId(match.otherUser.id);
-          queryClient.invalidateQueries({ queryKey: ["messages", match.id] });
+          queryClient.invalidateQueries({
+            queryKey: ["messages", match.id, userId],
+          });
         }
       }
     },

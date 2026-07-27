@@ -21,8 +21,8 @@ import type {
   RegisterPendingResponse,
   RegisterStudentData,
   User,
-  UserRole,
 } from "@/types";
+import { getDashboardPath } from "@/lib/auth/routes";
 
 interface AuthContextValue {
   user: User | null;
@@ -109,12 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session.user);
       setToken(session.token);
 
-      const roleRoutes: Record<UserRole, string> = {
-        student: "/student",
-        company: "/company",
-        admin: "/admin",
-      };
-      router.push(roleRoutes[session.user.role]);
+      router.push(getDashboardPath(session.user.role));
     },
     [router]
   );

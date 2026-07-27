@@ -285,6 +285,23 @@ export const studentsApi = {
     });
   },
 
+  async getAvailableSkills(): Promise<string[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const { SKILL_OPTIONS } = await import("@/lib/mock/data");
+      return [...SKILL_OPTIONS];
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Array<{ name?: string } | string>>(
+      "students/skills/available"
+    );
+    return raw
+      .map((skill) => (typeof skill === "string" ? skill : skill.name ?? ""))
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  },
+
   getProfileCompleteness(profile: StudentProfile, projectCount: number): number {
     let score = 0;
     if (profile.fullName) score += 15;

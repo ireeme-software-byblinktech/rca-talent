@@ -19,6 +19,7 @@ import {
   FolderKanban,
   Globe,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Menu,
   MessageSquare,
@@ -147,6 +148,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
     },
     {
       kind: "link",
+      href: "/support",
+      label: "Support",
+      icon: <LifeBuoy className="h-4 w-4" />,
+    },
+    {
+      kind: "link",
       href: "/student/settings",
       label: "Settings",
       icon: <Settings className="h-4 w-4" />,
@@ -232,6 +239,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
     },
     {
       kind: "link",
+      href: "/support",
+      label: "Support",
+      icon: <LifeBuoy className="h-4 w-4" />,
+    },
+    {
+      kind: "link",
       href: "/company/settings",
       label: "Settings",
       icon: <Settings className="h-4 w-4" />,
@@ -243,6 +256,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
       href: "/admin",
       label: "Overview",
       icon: <LayoutDashboard className="h-4 w-4" />,
+    },
+    {
+      kind: "link",
+      href: "/support",
+      label: "Submit feedback",
+      icon: <LifeBuoy className="h-4 w-4" />,
     },
     {
       kind: "group",
@@ -281,6 +300,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
           href: "/admin/moderation",
           label: "Moderation",
           icon: <Flag className="h-4 w-4" />,
+        },
+        {
+          kind: "link",
+          href: "/admin/support",
+          label: "Support inbox",
+          icon: <LifeBuoy className="h-4 w-4" />,
         },
         {
           kind: "link",

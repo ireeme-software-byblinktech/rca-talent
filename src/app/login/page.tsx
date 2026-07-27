@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RCALogo } from "@/components/shared/RCALogo";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { useAuth } from "@/lib/auth/context";
+import { getDashboardPath } from "@/lib/auth/routes";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
@@ -22,7 +23,8 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, user, isLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const defaultRole = searchParams.get("role") ?? "student";
@@ -32,6 +34,12 @@ function LoginForm() {
   );
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(getDashboardPath(user.role));
+    }
+  }, [isLoading, user, router]);
 
   useEffect(() => {
     if (verified === "1") {
@@ -77,6 +85,14 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 items-center justify-center p-4">
+      {(isLoading || user) && (
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Redirecting to your dashboard…
+        </div>
+      )}
+      {!isLoading && !user && (
+      <>
       {/* Entire Card Frame */}
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex flex-col lg:flex-row">
@@ -223,6 +239,8 @@ function LoginForm() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

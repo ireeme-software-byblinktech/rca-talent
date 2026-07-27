@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RCALogo } from "@/components/shared/RCALogo";
+import { PublicAuthButtons } from "@/components/shared/PublicAuthButtons";
 
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,23 +40,17 @@ export function PublicHeader() {
             >
               Blog
             </Link>
+            <Link
+              href="/support"
+              className="text-sm font-medium text-gray-200 hover:text-white transition-colors"
+            >
+              Support
+            </Link>
           </nav>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Auth Buttons — Dashboard if logged in */}
           <div className="hidden sm:flex items-center gap-2">
-            <Button
-              variant="ghost"
-              asChild
-              className="font-medium text-white hover:bg-white/10 hover:text-white h-9 px-4"
-            >
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button
-              asChild
-              className="rounded-full px-5 h-9 bg-white text-[#1A2B4B] hover:bg-gray-100 font-semibold text-xs sm:text-sm"
-            >
-              <Link href="/register">Get Started</Link>
-            </Button>
+            <PublicAuthButtons />
           </div>
 
           {/* Mobile Hamburger Button */}
@@ -102,6 +97,13 @@ export function PublicHeader() {
                 className="rounded-lg px-3 py-2 text-sm font-medium text-gray-100 hover:bg-white/10 transition-colors"
               >
                 Blog
+              </Link>
+              <Link
+                href="/support"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-100 hover:bg-white/10 transition-colors"
+              >
+                Support
               </Link>
               <div className="my-1 border-t border-white/10" />
               <div className="flex flex-col gap-2 pt-1">
@@ -163,6 +165,11 @@ export function PublicFooter() {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link href="/support" className="hover:text-white transition-colors">
+                  Support
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
@@ -179,8 +186,8 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:text-white transition-colors">
-                  Subscribe on the blog
+                <Link href="/support" className="hover:text-white transition-colors">
+                  Contact support
                 </Link>
               </li>
             </ul>

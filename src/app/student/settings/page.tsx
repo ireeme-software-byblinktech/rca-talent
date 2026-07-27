@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,20 @@ export default function StudentSettingsPage() {
               disabled={visibilityMutation.isPending}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Help & feedback</CardTitle>
+          <CardDescription>
+            Report bugs or suggest improvements for RCA Talent
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" className="rounded-full" asChild>
+            <Link href="/support">Contact support</Link>
+          </Button>
         </CardContent>
       </Card>
 

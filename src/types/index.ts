@@ -322,6 +322,36 @@ export interface BlogSubscriber {
   subscribedAt: string;
 }
 
+export type SupportTicketCategory = "bug" | "improvement" | "question" | "other";
+
+export type SupportTicketStatus =
+  | "open"
+  | "in_progress"
+  | "resolved"
+  | "dismissed";
+
+export interface SupportTicketSubmitter {
+  email: string;
+  userId?: string;
+  role?: UserRole;
+  name?: string;
+  isRegistered: boolean;
+}
+
+export interface SupportTicket {
+  id: string;
+  category: SupportTicketCategory;
+  subject: string;
+  message: string;
+  email: string;
+  userId?: string;
+  status: SupportTicketStatus;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  submitter: SupportTicketSubmitter;
+}
+
 export type PortfolioTheme = "classic" | "modern" | "minimal";
 
 export interface PortfolioSections {

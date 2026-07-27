@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +29,22 @@ export default function CompanySettingsPage() {
             <Input value={user?.email ?? ""} disabled />
           </div>
           <p className="text-xs text-muted-foreground">
-            {/* TODO: Wire up password change when backend auth is ready */}
             Password change will be available when connected to the NestJS backend.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Help & feedback</CardTitle>
+          <CardDescription>
+            Report bugs or suggest improvements for RCA Talent
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" className="rounded-full" asChild>
+            <Link href="/support">Contact support</Link>
+          </Button>
         </CardContent>
       </Card>
 
