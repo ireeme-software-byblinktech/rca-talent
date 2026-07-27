@@ -352,7 +352,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
   useEffect(() => {
     setOpenGroups((prev) => {
       const next = new Set(prev);
-      for (const id of defaultOpen) next.add(id);
+      defaultOpen.forEach((id) => next.add(id));
       return next;
     });
   }, [defaultOpen]);

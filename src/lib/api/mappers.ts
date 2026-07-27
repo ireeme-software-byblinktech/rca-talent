@@ -483,13 +483,14 @@ export function mapJobApplication(
 }
 
 export function mapJobToBackend(
-  data: Record<string, unknown>
+  data: Record<string, unknown> | object
 ): Record<string, unknown> {
+  const d = data as Record<string, unknown>;
   const body: Record<string, unknown> = {};
-  if (data.title !== undefined) body.title = data.title;
-  if (data.description !== undefined) body.description = data.description;
-  if (data.location !== undefined) body.location = data.location;
-  if (data.status !== undefined) body.status = data.status;
+  if (d.title !== undefined) body.title = d.title;
+  if (d.description !== undefined) body.description = d.description;
+  if (d.location !== undefined) body.location = d.location;
+  if (d.status !== undefined) body.status = d.status;
   return body;
 }
 
