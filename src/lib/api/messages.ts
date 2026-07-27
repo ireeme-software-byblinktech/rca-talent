@@ -213,7 +213,7 @@ export const messagesApi = {
       return msg;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/messages", {
+    const raw = await apiClient<Record<string, unknown>>("messages", {
       method: "POST",
       body: { recipientId, content: body },
     });
@@ -248,7 +248,7 @@ export const messagesApi = {
       return conv;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/messages", {
+    const raw = await apiClient<Record<string, unknown>>("messages", {
       method: "POST",
       body: { recipientId: otherUserId, content: initialMessage },
     });

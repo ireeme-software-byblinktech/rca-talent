@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dev.cmd",
+    "dev": "node scripts/free-port.mjs 3001 && next dev -p 3001",
+    "dev:win": "dev.cmd",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "next lint"
   },
   "dependencies": {

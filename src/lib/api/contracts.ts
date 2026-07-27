@@ -122,7 +122,7 @@ export const contractsApi = {
       return contract;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/contracts", {
+    const raw = await apiClient<Record<string, unknown>>("contracts", {
       method: "POST",
       body: mapContractToBackend({ ...data, companyId }),
     });

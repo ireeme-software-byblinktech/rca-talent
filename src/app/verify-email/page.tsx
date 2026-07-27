@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/lib/api/auth";
@@ -15,6 +15,7 @@ function VerifyEmailContent() {
   const token = searchParams.get("token");
   const email = searchParams.get("email") ?? "";
   const isPending = searchParams.get("pending") === "1";
+  const verifyStarted = useRef(false);
 
   const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">(
     token ? "verifying" : "idle"
@@ -23,28 +24,29 @@ function VerifyEmailContent() {
   const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-
-    let cancelled = false;
+    if (!token || verifyStarted.current) return;
+    verifyStarted.current = true;
 
     authApi
       .verifyEmail(token)
       .then((res) => {
-        if (cancelled) return;
         setStatus("success");
         setMessage(res.message);
       })
       .catch((err) => {
-        if (cancelled) return;
+        const text =
+          err instanceof Error
+            ? err.message
+            : "Verification link is invalid or expired.";
+        // Race / already-used token after a successful verify — treat as success.
+        if (/already verified/i.test(text)) {
+          setStatus("success");
+          setMessage(text);
+          return;
+        }
         setStatus("error");
-        setMessage(
-          err instanceof Error ? err.message : "Verification link is invalid or expired."
-        );
+        setMessage(text);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [token]);
 
   const handleResend = async () => {

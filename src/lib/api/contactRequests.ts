@@ -60,7 +60,7 @@ export const contactRequestsApi = {
     }
     const { apiClient } = await import("./client");
     const raw = await apiClient<BackendContactRequest[]>(
-      "/contact-requests/received/me"
+      "contact-requests/received/me"
     );
     return raw.map((r) => mapContactRequestWithDetails(r));
   },
@@ -84,7 +84,7 @@ export const contactRequestsApi = {
         });
     }
     const { apiClient } = await import("./client");
-    return apiClient<AcceptedCandidate[]>("/contact-requests/candidates");
+    return apiClient<AcceptedCandidate[]>("contact-requests/candidates");
   },
 
   async getForCompany(companyId: string): Promise<ContactRequestWithDetails[]> {
@@ -144,7 +144,7 @@ export const contactRequestsApi = {
       return request;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<BackendContactRequest>("/contact-requests", {
+    const raw = await apiClient<BackendContactRequest>("contact-requests", {
       method: "POST",
       body: { receiverId: data.studentId, message: data.message },
     });

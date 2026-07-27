@@ -59,7 +59,7 @@ export const interviewsApi = {
       return inv;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<Record<string, unknown>>("/interviews", {
+    const raw = await apiClient<Record<string, unknown>>("interviews", {
       method: "POST",
       body: { ...data, companyId },
     });

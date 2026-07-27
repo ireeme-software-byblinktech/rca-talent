@@ -31,7 +31,7 @@ export const authApi = {
       };
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<BackendAuthResponse>("/auth/login", {
+    const raw = await apiClient<BackendAuthResponse>("auth/login", {
       method: "POST",
       body: credentials,
       skipRefresh: true,
@@ -74,7 +74,7 @@ export const authApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<RegisterPendingResponse>("/auth/register/student", {
+    return apiClient<RegisterPendingResponse>("auth/register/student", {
       method: "POST",
       body: data,
       skipRefresh: true,
@@ -112,7 +112,7 @@ export const authApi = {
       };
     }
     const { apiClient } = await import("./client");
-    return apiClient<RegisterPendingResponse>("/auth/register/company", {
+    return apiClient<RegisterPendingResponse>("auth/register/company", {
       method: "POST",
       body: data,
       skipRefresh: true,
@@ -121,7 +121,7 @@ export const authApi = {
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     const { apiClient } = await import("./client");
-    return apiClient<{ message: string }>("/auth/verify-email", {
+    return apiClient<{ message: string }>("auth/verify-email", {
       method: "POST",
       body: { token },
       skipRefresh: true,
@@ -130,7 +130,7 @@ export const authApi = {
 
   async resendVerification(email: string): Promise<{ message: string }> {
     const { apiClient } = await import("./client");
-    return apiClient<{ message: string }>("/auth/resend-verification", {
+    return apiClient<{ message: string }>("auth/resend-verification", {
       method: "POST",
       body: { email },
       skipRefresh: true,
@@ -147,13 +147,13 @@ export const authApi = {
       return user;
     }
     const { apiClient } = await import("./client");
-    const raw = await apiClient<BackendUser>("/auth/me", { token });
+    const raw = await apiClient<BackendUser>("auth/me", { token });
     return mapUser(raw);
   },
 
   async refresh(refreshToken: string): Promise<AuthSession> {
     const { apiClient } = await import("./client");
-    const raw = await apiClient<BackendAuthResponse>("/auth/refresh", {
+    const raw = await apiClient<BackendAuthResponse>("auth/refresh", {
       method: "POST",
       body: { refreshToken },
       skipRefresh: true,
@@ -167,6 +167,6 @@ export const authApi = {
       return;
     }
     const { apiClient } = await import("./client");
-    return apiClient<void>("/auth/logout", { method: "POST" });
+    return apiClient<void>("auth/logout", { method: "POST" });
   },
 };
