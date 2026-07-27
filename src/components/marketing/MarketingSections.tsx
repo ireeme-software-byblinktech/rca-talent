@@ -100,8 +100,28 @@ export function FeatureGrid({
               </h2>
             </div>
 
-            {/* Roadmap Path with Data Points */}
-            <div className="relative h-[380px] lg:h-[320px]">
+            {/* Mobile Vertical Steps Timeline (< md) */}
+            <div className="md:hidden flex flex-col gap-8 my-6">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center text-center bg-gray-50 rounded-xl p-6 border border-gray-100 shadow-sm">
+                  <div className="relative mb-3">
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#1A2B4B] to-[#2A4070] text-white flex items-center justify-center shadow-lg">
+                      {item.icon}
+                    </div>
+                  </div>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Step 0{idx + 1}
+                  </div>
+                  <div className="text-[#1A2B4B] text-xl font-black mb-2">{item.title}</div>
+                  <p className="text-xs text-gray-600 leading-relaxed font-medium max-w-sm">
+                    {item.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Roadmap Path with Data Points (md+) */}
+            <div className="relative hidden md:block h-[380px] lg:h-[320px]">
               {/* Winding Road SVG Path */}
               <svg 
                 className="absolute inset-0 w-full h-full pointer-events-none" 
@@ -135,12 +155,10 @@ export function FeatureGrid({
               <div className="relative h-full">
                 
                 {/* Data Point 01 - Bottom Left - ABOVE ROAD */}
-                <div className="absolute left-[5%] bottom-[32%] md:left-[8%] md:bottom-[35%] flex flex-col items-center text-center z-10">
+                <div className="absolute left-[5%] bottom-[32%] lg:left-[8%] lg:bottom-[35%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
-                    {/* Glow effect */}
                     <div className="absolute inset-0 bg-[#1A2B4B]/20 blur-2xl rounded-full scale-150" />
                     
-                    {/* Hexagon container with rounded corners */}
                     <div className="relative">
                       <svg width="90" height="100" viewBox="0 0 90 100" className="drop-shadow-2xl">
                         <defs>
@@ -152,7 +170,6 @@ export function FeatureGrid({
                         <path d="M45 8 L77 28 Q80 30, 80 33.5 L80 69 Q80 72, 77 74 L45 93 Q45 95, 42 93 L10 74 Q7 72, 7 69 L7 33.5 Q7 30, 10 28 L42 8 Q45 6, 45 8 Z" fill="url(#hex-gradient-1)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
                       </svg>
                       
-                      {/* Icon */}
                       <div className="absolute inset-0 flex items-center justify-center text-white">
                         {items[0].icon}
                       </div>
@@ -169,12 +186,10 @@ export function FeatureGrid({
                 </div>
 
                 {/* Data Point 02 - Middle - BELOW ROAD */}
-                <div className="absolute left-[40%] bottom-[8%] md:left-[45%] md:bottom-[10%] flex flex-col items-center text-center z-10">
+                <div className="absolute left-[38%] bottom-[8%] lg:left-[45%] lg:bottom-[10%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
-                    {/* Glow effect */}
                     <div className="absolute inset-0 bg-[#3B5998]/20 blur-2xl rounded-full scale-150" />
                     
-                    {/* Hexagon container with rounded corners */}
                     <div className="relative">
                       <svg width="90" height="100" viewBox="0 0 90 100" className="drop-shadow-2xl">
                         <defs>
@@ -186,7 +201,6 @@ export function FeatureGrid({
                         <path d="M45 8 L77 28 Q80 30, 80 33.5 L80 69 Q80 72, 77 74 L45 93 Q45 95, 42 93 L10 74 Q7 72, 7 69 L7 33.5 Q7 30, 10 28 L42 8 Q45 6, 45 8 Z" fill="url(#hex-gradient-2)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
                       </svg>
                       
-                      {/* Icon */}
                       <div className="absolute inset-0 flex items-center justify-center text-white">
                         {items[1].icon}
                       </div>
@@ -203,12 +217,10 @@ export function FeatureGrid({
                 </div>
 
                 {/* Data Point 03 - Top Right - ABOVE ROAD */}
-                <div className="absolute right-[5%] top-[25%] md:right-[8%] md:top-[20%] flex flex-col items-center text-center z-10">
+                <div className="absolute right-[5%] top-[25%] lg:right-[8%] lg:top-[20%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
-                    {/* Glow effect */}
                     <div className="absolute inset-0 bg-[#2A4070]/20 blur-2xl rounded-full scale-150" />
                     
-                    {/* Hexagon container with rounded corners */}
                     <div className="relative">
                       <svg width="90" height="100" viewBox="0 0 90 100" className="drop-shadow-2xl">
                         <defs>
@@ -220,7 +232,6 @@ export function FeatureGrid({
                         <path d="M45 8 L77 28 Q80 30, 80 33.5 L80 69 Q80 72, 77 74 L45 93 Q45 95, 42 93 L10 74 Q7 72, 7 69 L7 33.5 Q7 30, 10 28 L42 8 Q45 6, 45 8 Z" fill="url(#hex-gradient-3)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
                       </svg>
                       
-                      {/* Icon */}
                       <div className="absolute inset-0 flex items-center justify-center text-white">
                         {items[2].icon}
                       </div>

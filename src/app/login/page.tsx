@@ -207,6 +207,18 @@ function LoginForm() {
                   Create account
                 </Link>
               </p>
+
+              <div className="mt-8 border-t pt-4 text-center">
+                <a
+                  href="https://blinktechnologiz.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-all duration-200 hover:underline group"
+                >
+                  <span>Powered by</span>
+                  <span className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Blinktech</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

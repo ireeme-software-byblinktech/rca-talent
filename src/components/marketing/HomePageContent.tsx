@@ -131,7 +131,7 @@ export function HomePageContent() {
               <Button asChild className="rounded-full bg-white text-[#1A2B4B] hover:bg-gray-100 font-semibold">
                 <Link href="/blog">Read the blog</Link>
               </Button>
-              <Button variant="outline" asChild className="rounded-full border-2 border-white text-white hover:bg-white hover:text-[#1A2B4B] font-semibold">
+              <Button variant="outline" asChild className="rounded-full border-2 border-white text-blue-900 hover:bg-white hover:text-[#1A2B4B] font-semibold">
                 <Link href="/login">Sign in</Link>
               </Button>
             </div>
