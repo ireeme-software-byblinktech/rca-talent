@@ -44,7 +44,6 @@ export function useMessagesSocket({
 
     let socket: Socket | null = null;
     let cancelled = false;
-    let pollId: ReturnType<typeof setInterval> | undefined;
 
     const connect = () => {
       const token = getAuthToken();
@@ -81,7 +80,7 @@ export function useMessagesSocket({
     connect();
 
     // Re-auth when access token is refreshed in another part of the app.
-    pollId = setInterval(() => {
+    const pollId = setInterval(() => {
       const token = getAuthToken();
       if (!token || !socket) return;
       const currentAuth = (socket.auth as { token?: string } | undefined)?.token;
@@ -97,7 +96,7 @@ export function useMessagesSocket({
 
     return () => {
       cancelled = true;
-      if (pollId) clearInterval(pollId);
+      clearInterval(pollId);
       socket?.removeAllListeners();
       socket?.disconnect();
       setConnected(false);
