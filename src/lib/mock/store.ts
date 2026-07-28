@@ -15,6 +15,7 @@ import {
   mockNotifications,
   mockPortfolioConfigs,
   mockProjects,
+  mockSiteAnnouncements,
   mockStudentProfiles,
   mockUsers,
 } from "./data";
@@ -35,6 +36,7 @@ import type {
   Notification,
   PortfolioConfig,
   Project,
+  SiteAnnouncement,
   StudentProfile,
   SupportTicket,
   User,
@@ -62,6 +64,7 @@ class MockStore {
   contentReports: ContentReport[] = clone(mockContentReports);
   blogPosts: BlogPost[] = clone(mockBlogPosts);
   blogSubscribers: BlogSubscriber[] = clone(mockBlogSubscribers);
+  siteAnnouncements: SiteAnnouncement[] = clone(mockSiteAnnouncements);
   portfolioConfigs: PortfolioConfig[] = clone(mockPortfolioConfigs);
   supportTickets: SupportTicket[] = [];
 }

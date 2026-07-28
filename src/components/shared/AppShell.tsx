@@ -21,6 +21,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   LogOut,
+  Megaphone,
   Menu,
   MessageSquare,
   Newspaper,
@@ -48,6 +49,7 @@ import { adminApi } from "@/lib/api/admin";
 import { messagesApi } from "@/lib/api/messages";
 import { supportApi } from "@/lib/api/support";
 import { RCALogo } from "@/components/shared/RCALogo";
+import { BreakingNewsTicker } from "@/components/shared/BreakingNewsTicker";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import type { UserRole } from "@/types";
 
@@ -334,6 +336,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
         },
         {
           kind: "link",
+          href: "/admin/announcements",
+          label: "Announcements",
+          icon: <Megaphone className="h-4 w-4" />,
+        },
+        {
+          kind: "link",
           href: "/admin/project-reviews",
           label: "Project Reviews",
           icon: <FolderKanban className="h-4 w-4" />,
@@ -593,6 +601,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
       </aside>
 
       <div className="lg:pl-64">
+        {(role === "student" || role === "company") && <BreakingNewsTicker />}
         <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <nav className="flex h-14 items-center justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-r from-[#1A2B4B] to-[#2A4070] px-5 shadow-[0_8px_30px_rgb(26,43,75,0.20)] backdrop-blur-xl">

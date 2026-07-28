@@ -2,15 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Newspaper, Plus } from "lucide-react";
+import { Loader2, Mail, Newspaper, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +20,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AdminBlogPostCard } from "@/components/admin/AdminBlogPostCard";
+import { AdminNewsletterPanel } from "@/components/admin/AdminNewsletterPanel";
 import { AdminMetricStrip } from "@/components/admin/AdminMetricStrip";
+import { BlogCoverUpload } from "@/components/admin/BlogCoverUpload";
+import { BlogEditor } from "@/components/admin/BlogEditor";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { blogApi, type CreateBlogPostData } from "@/lib/api/blog";
+import { stripHtml } from "@/lib/blog/utils";
 import { slugify } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { BlogPost } from "@/types";
@@ -32,7 +37,9 @@ const postSchema = z.object({
   slug: z.string().min(3, "Slug is required").regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and hyphens"),
   title: z.string().min(3, "Title must be at least 3 characters"),
   excerpt: z.string().min(10, "Excerpt must be at least 10 characters"),
-  content: z.string().min(10, "Content must be at least 10 characters"),
+  content: z.string().refine((value) => stripHtml(value).length >= 10, {
+    message: "Content must be at least 10 characters",
+  }),
   author: z.string().min(2, "Author is required"),
   tags: z.string().min(1, "Add at least one tag"),
 });
@@ -43,6 +50,7 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [published, setPublished] = useState(post?.published ?? true);
+  const [coverImage, setCoverImage] = useState<string | undefined>(post?.coverImage);
   const isNew = !post;
 
   const form = useForm<PostForm>({
@@ -67,6 +75,10 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
     }
   }, [title, isNew, form]);
 
+  useEffect(() => {
+    setCoverImage(post?.coverImage);
+  }, [post]);
+
   const mutation = useMutation({
     mutationFn: (data: PostForm) => {
       const payload: CreateBlogPostData = {
@@ -77,11 +89,13 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
         author: data.author,
         tags: data.tags.split(",").map((t) => t.trim()).filter(Boolean),
         published,
+        coverImage,
       };
       return post ? blogApi.update(post.id, payload) : blogApi.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
       toast({ title: post ? "Post updated" : "Post created" });
       onClose();
     },
@@ -113,8 +127,10 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
           });
         }
       )}
-      className="space-y-5 max-h-[70vh] overflow-y-auto px-1 pb-2"
+      className="space-y-5 max-h-[75vh] overflow-y-auto px-1 pb-2"
     >
+      <BlogCoverUpload value={coverImage} onChange={setCoverImage} />
+
       <div>
         <Label>Title</Label>
         <Input className="mt-1.5" {...form.register("title")} placeholder="Enter post title" />
@@ -148,11 +164,24 @@ function PostDialog({ post, onClose }: { post?: BlogPost; onClose: () => void })
         )}
       </div>
       <div>
-        <Label>Content (use ## for headings)</Label>
-        <Textarea className="mt-1.5" {...form.register("content")} rows={8} />
+        <Label>Content</Label>
+        <Controller
+          name="content"
+          control={form.control}
+          render={({ field }) => (
+            <BlogEditor
+              value={field.value}
+              onChange={field.onChange}
+              className="mt-1.5"
+            />
+          )}
+        />
         {fieldError("content") && (
           <p className="mt-1 text-xs text-destructive">{fieldError("content")}</p>
         )}
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Use the toolbar to format text, upload images, or embed videos.
+        </p>
       </div>
       <div>
         <Label>Tags (comma-separated)</Label>
@@ -193,6 +222,7 @@ export default function AdminBlogPage() {
     mutationFn: (id: string) => blogApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
       toast({ title: "Post deleted" });
     },
   });
@@ -202,6 +232,7 @@ export default function AdminBlogPage() {
       blogApi.update(id, { published }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
     },
   });
 
@@ -233,7 +264,7 @@ export default function AdminBlogPage() {
               New post
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl gap-6 rounded-2xl p-6 sm:p-8">
+          <DialogContent className="max-w-4xl gap-6 rounded-2xl p-6 sm:p-8">
             <DialogHeader className="space-y-2">
               <DialogTitle>{editing ? "Edit post" : "New blog post"}</DialogTitle>
             </DialogHeader>
@@ -244,33 +275,52 @@ export default function AdminBlogPage() {
 
       <AdminMetricStrip metrics={metrics} />
 
-      {posts.length === 0 ? (
-        <EmptyState
-          icon={<Newspaper className="h-10 w-10" />}
-          title="No blog posts"
-          description="Create your first post to get started."
-          action={{ label: "New post", onClick: () => setDialogOpen(true) }}
-        />
-      ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {posts.map((post, i) => (
-            <AdminBlogPostCard
-              key={post.id}
-              post={post}
-              index={i}
-              isToggling={toggleMutation.isPending}
-              onEdit={() => {
-                setEditing(post);
-                setDialogOpen(true);
-              }}
-              onDelete={() => deleteMutation.mutate(post.id)}
-              onTogglePublish={(published) =>
-                toggleMutation.mutate({ id: post.id, published })
-              }
+      <Tabs defaultValue="posts" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="posts" className="gap-1.5">
+            <Newspaper className="h-4 w-4" />
+            Posts
+          </TabsTrigger>
+          <TabsTrigger value="newsletter" className="gap-1.5">
+            <Mail className="h-4 w-4" />
+            Newsletter
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="posts">
+          {posts.length === 0 ? (
+            <EmptyState
+              icon={<Newspaper className="h-10 w-10" />}
+              title="No blog posts"
+              description="Create your first post to get started."
+              action={{ label: "New post", onClick: () => setDialogOpen(true) }}
             />
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {posts.map((post, i) => (
+                <AdminBlogPostCard
+                  key={post.id}
+                  post={post}
+                  index={i}
+                  isToggling={toggleMutation.isPending}
+                  onEdit={() => {
+                    setEditing(post);
+                    setDialogOpen(true);
+                  }}
+                  onDelete={() => deleteMutation.mutate(post.id)}
+                  onTogglePublish={(published) =>
+                    toggleMutation.mutate({ id: post.id, published })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="newsletter">
+          <AdminNewsletterPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

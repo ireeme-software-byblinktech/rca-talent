@@ -321,6 +321,7 @@ export interface BlogPost {
   published: boolean;
   publishedAt: string;
   updatedAt: string;
+  viewCount: number;
 }
 
 export interface BlogSubscriber {
@@ -329,6 +330,36 @@ export interface BlogSubscriber {
   userId?: string;
   active: boolean;
   subscribedAt: string;
+}
+
+export interface BlogNewsletter {
+  id: string;
+  subject: string;
+  bodyHtml: string;
+  sentBy?: string;
+  recipientCount: number;
+  failedCount: number;
+  createdAt: string;
+}
+
+export interface SendNewsletterResult extends BlogNewsletter {
+  sent: number;
+  failed: number;
+  total: number;
+}
+
+export type AnnouncementAudience = "all" | "student" | "company";
+
+export interface SiteAnnouncement {
+  id: string;
+  message: string;
+  linkUrl?: string;
+  audience: AnnouncementAudience;
+  published: boolean;
+  priority: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type SupportTicketCategory = "bug" | "improvement" | "question" | "other";

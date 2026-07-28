@@ -31,7 +31,7 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<void>;
   registerStudent: (data: RegisterStudentData) => Promise<RegisterPendingResponse>;
   registerCompany: (data: RegisterCompanyData) => Promise<RegisterPendingResponse>;
-  logout: () => Promise<void>;
+  logout: (redirectTo?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -144,12 +144,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router]
   );
 
-  const logout = useCallback(async () => {
-    await authApi.logout();
+  const logout = useCallback(async (redirectTo = "/login") => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Session may already be invalid after password change, etc.
+    }
     storeSession(null);
     setUser(null);
     setToken(null);
-    router.push("/login");
+    router.push(redirectTo);
   }, [router]);
 
   return (

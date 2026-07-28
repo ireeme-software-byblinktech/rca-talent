@@ -29,6 +29,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const defaultRole = searchParams.get("role") ?? "student";
   const verified = searchParams.get("verified");
+  const passwordChanged = searchParams.get("passwordChanged");
   const [role] = useState<"student" | "company">(
     defaultRole === "company" ? "company" : "student"
   );
@@ -56,6 +57,15 @@ function LoginForm() {
       });
     }
   }, [verified, toast]);
+
+  useEffect(() => {
+    if (passwordChanged === "1") {
+      toast({
+        title: "Password updated",
+        description: "Sign in again with your new password.",
+      });
+    }
+  }, [passwordChanged, toast]);
 
   const {
     register,

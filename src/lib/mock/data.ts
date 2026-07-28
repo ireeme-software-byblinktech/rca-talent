@@ -15,6 +15,7 @@ import type {
   Notification,
   PortfolioConfig,
   Project,
+  SiteAnnouncement,
   StudentProfile,
   User,
 } from "@/types";
@@ -540,6 +541,7 @@ With internship pipelines growing and remote work opening global doors, RCA tale
     published: true,
     publishedAt: "2024-09-01T00:00:00Z",
     updatedAt: "2024-09-01T00:00:00Z",
+    viewCount: 842,
   },
   {
     id: "blog-2",
@@ -571,6 +573,7 @@ Add certifications, hackathon wins, and new projects as you grow. Recruiters not
     published: true,
     publishedAt: "2024-09-15T00:00:00Z",
     updatedAt: "2024-09-15T00:00:00Z",
+    viewCount: 1204,
   },
   {
     id: "blog-3",
@@ -602,6 +605,29 @@ Stay informed about new cohorts, platform features, and hiring best practices.`,
     published: true,
     publishedAt: "2024-10-01T00:00:00Z",
     updatedAt: "2024-10-01T00:00:00Z",
+    viewCount: 567,
+  },
+];
+
+export const mockSiteAnnouncements: SiteAnnouncement[] = [
+  {
+    id: "ann-1",
+    message: "New: Project reviews are live — showcase your best work to employers.",
+    linkUrl: "/student/projects",
+    audience: "student",
+    published: true,
+    priority: 2,
+    createdAt: "2026-07-28T08:00:00Z",
+    updatedAt: "2026-07-28T08:00:00Z",
+  },
+  {
+    id: "ann-2",
+    message: "Employers can now browse verified student portfolios and send contact requests.",
+    audience: "company",
+    published: true,
+    priority: 1,
+    createdAt: "2026-07-27T10:00:00Z",
+    updatedAt: "2026-07-27T10:00:00Z",
   },
 ];
 

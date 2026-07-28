@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Newspaper } from "lucide-react";
 import { BlogPostCard } from "@/components/shared/BlogPostCard";
 import { BlogSubscribeForm } from "@/components/shared/BlogSubscribeForm";
+import { PageHero } from "@/components/marketing/MarketingSections";
 import { PublicFooter, PublicHeader } from "@/components/shared/PublicLayout";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { blogApi } from "@/lib/api/blog";
@@ -14,40 +15,77 @@ export default function BlogPage() {
     queryFn: () => blogApi.listPublished(),
   });
 
+  const [featured, ...rest] = posts;
+
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
       <main className="flex-1">
-        <section className="border-b bg-gradient-to-b from-primary/5 to-background py-14 sm:py-16">
-          <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-            <div className="mx-auto flex max-w-2xl flex-col items-center">
-              <BookOpen className="h-8 w-8 text-primary" />
-              <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-                RCA Talent Blog
-              </h1>
-              <p className="mt-3 text-muted-foreground">
-                Career insights, student success stories, and hiring tips for
-                Rwanda&apos;s tech community.
-              </p>
-              <div className="mt-6 w-full max-w-md">
-                <BlogSubscribeForm variant="inline" />
-              </div>
+        <PageHero
+          centered
+          badge={
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+              <BookOpen className="h-4 w-4" />
+              RCA Talent Blog
+            </span>
+          }
+          title="Insights for students and employers"
+          description="Career guidance, student success stories, and hiring tips for Rwanda's tech community."
+          actions={
+            <div className="w-full max-w-md">
+              <BlogSubscribeForm variant="inline" />
             </div>
-          </div>
-        </section>
+          }
+        />
 
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           {isLoading ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <LoadingSkeleton rows={3} />
             </div>
           ) : posts.length === 0 ? (
-            <p className="text-center text-muted-foreground">No posts published yet.</p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20 px-6 py-16 text-center">
+              <Newspaper className="h-10 w-10 text-muted-foreground/60" />
+              <p className="mt-4 font-medium text-foreground">No posts published yet</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                New articles from RCA Talent will appear here once published.
+              </p>
+            </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post, i) => (
-                <BlogPostCard key={post.id} post={post} index={i} />
-              ))}
+            <div className="space-y-10">
+              {featured && (
+                <div>
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+                      Featured
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold text-foreground">
+                      Latest article
+                    </h2>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    <BlogPostCard post={featured} />
+                  </div>
+                </div>
+              )}
+
+              {rest.length > 0 && (
+                <div>
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+                      Archive
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold text-foreground">
+                      More articles
+                    </h2>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {rest.map((post, i) => (
+                      <BlogPostCard key={post.id} post={post} index={i + 1} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

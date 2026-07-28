@@ -27,16 +27,27 @@ export function BlogSubscribeForm({
   const queryClient = useQueryClient();
   const [email, setEmail] = useState(user?.email ?? "");
 
-  const { data: subscribed, isLoading: statusLoading } = useQuery({
-    queryKey: ["blog-subscribed", user?.email ?? email],
-    queryFn: () => blogApi.isSubscribed(user?.email ?? email),
-    enabled: !!(user?.email || emailSchema.safeParse(email).success),
+  const statusEmail = (user?.email ?? email).trim().toLowerCase();
+  const emailIsValid = emailSchema.safeParse(statusEmail).success;
+
+  const { data: subscribed = false, isLoading: statusLoading } = useQuery({
+    queryKey: ["blog-subscribed", statusEmail],
+    queryFn: async () => {
+      try {
+        return await blogApi.isSubscribed(statusEmail);
+      } catch {
+        return false;
+      }
+    },
+    enabled: emailIsValid,
+    retry: false,
   });
 
   const subscribeMutation = useMutation({
-    mutationFn: () => blogApi.subscribe(email, user?.id),
+    mutationFn: () => blogApi.subscribe(statusEmail, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-subscribed"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-subscriber-count"] });
       toast({
         title: "Subscribed!",
         description: "You'll receive updates when new posts are published.",
@@ -52,16 +63,24 @@ export function BlogSubscribeForm({
   });
 
   const unsubscribeMutation = useMutation({
-    mutationFn: () => blogApi.unsubscribe(user?.email ?? email),
+    mutationFn: () => blogApi.unsubscribe(statusEmail),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-subscribed"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-subscriber-count"] });
       toast({ title: "Unsubscribed", description: "You won't receive blog updates." });
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Unsubscribe failed",
+        description: err instanceof Error ? err.message : "Please try again",
+      });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = emailSchema.safeParse(email);
+    const parsed = emailSchema.safeParse(email.trim());
     if (!parsed.success) {
       toast({
         variant: "destructive",
@@ -73,7 +92,7 @@ export function BlogSubscribeForm({
     subscribeMutation.mutate();
   };
 
-  if (subscribed && !statusLoading) {
+  if (subscribed && !statusLoading && emailIsValid) {
     return (
       <div
         className={cn(
@@ -130,11 +149,15 @@ export function BlogSubscribeForm({
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={subscribeMutation.isPending}
+          disabled={subscribeMutation.isPending || !!user?.email}
           className={variant === "inline" ? "max-w-xs" : ""}
         />
-        <Button type="submit" disabled={subscribeMutation.isPending} className="gap-1 shrink-0">
-          {subscribeMutation.isPending ? (
+        <Button
+          type="submit"
+          disabled={subscribeMutation.isPending || statusLoading}
+          className="gap-1 shrink-0"
+        >
+          {subscribeMutation.isPending || statusLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Bell className="h-4 w-4" />

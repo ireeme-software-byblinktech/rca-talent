@@ -6,12 +6,15 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RCALogo } from "@/components/shared/RCALogo";
 import { PublicAuthButtons } from "@/components/shared/PublicAuthButtons";
+import { BreakingNewsTicker } from "@/components/shared/BreakingNewsTicker";
 
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-6">
+    <>
+      <BreakingNewsTicker />
+      <header className="sticky top-0 z-50 px-3 pt-3 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <nav className="relative flex h-16 items-center justify-between rounded-2xl bg-gradient-to-r from-[#1A2B4B] to-[#2A4070] px-4 sm:px-5 shadow-[0_8px_30px_rgb(26,43,75,0.20)] backdrop-blur-xl border border-white/10">
           {/* Logo */}
@@ -129,6 +132,7 @@ export function PublicHeader() {
         )}
       </div>
     </header>
+    </>
   );
 }
 

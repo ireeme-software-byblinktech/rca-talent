@@ -1,6 +1,6 @@
 import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
-import type { BlogPost, BlogSubscriber } from "@/types";
+import type { BlogPost, BlogSubscriber, BlogNewsletter, SendNewsletterResult } from "@/types";
 
 const USE_MOCK = isMockMode();
 
@@ -30,6 +30,7 @@ function mapBlogPost(raw: Record<string, unknown>): BlogPost {
     published: Boolean(raw.published),
     publishedAt: String(publishedAt),
     updatedAt: String(updatedAt),
+    viewCount: Number(raw.viewCount ?? 0),
   };
 }
 
@@ -73,6 +74,21 @@ export const blogApi = {
     return raw ? mapBlogPost(raw) : null;
   },
 
+  async recordView(slug: string): Promise<{ viewCount: number }> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      const post = store.blogPosts.find((p) => p.slug === slug && p.published);
+      if (!post) throw new Error("Post not found");
+      post.viewCount = (post.viewCount ?? 0) + 1;
+      return { viewCount: post.viewCount };
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<{ viewCount: number }>(`blog/${slug}/view`, {
+      method: "POST",
+    });
+  },
+
   async getBySlugAdmin(slug: string): Promise<BlogPost | null> {
     if (USE_MOCK) {
       await simulateDelay();
@@ -92,6 +108,7 @@ export const blogApi = {
         published: data.published ?? false,
         publishedAt: now,
         updatedAt: now,
+        viewCount: 0,
       };
       getStore().blogPosts.unshift(post);
       return post;
@@ -190,7 +207,9 @@ export const blogApi = {
       );
     }
     const { apiClient } = await import("./client");
-    return apiClient<boolean>(`blog/subscribe/status?email=${encodeURIComponent(email)}`);
+    return apiClient<boolean>(
+      `blog/subscribe/status?email=${encodeURIComponent(email.trim().toLowerCase())}`
+    );
   },
 
   async getSubscriberCount(): Promise<number> {
@@ -200,5 +219,77 @@ export const blogApi = {
     }
     const { apiClient } = await import("./client");
     return apiClient<number>("admin/blog/subscribers/count");
+  },
+
+  async listSubscribers(): Promise<BlogSubscriber[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return getStore().blogSubscribers.sort(
+        (a, b) =>
+          new Date(b.subscribedAt).getTime() - new Date(a.subscribedAt).getTime()
+      );
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<BlogSubscriber[]>("admin/blog/subscribers");
+  },
+
+  async deactivateSubscriber(id: string): Promise<BlogSubscriber> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const sub = getStore().blogSubscribers.find((s) => s.id === id);
+      if (!sub) throw new Error("Subscriber not found");
+      sub.active = false;
+      return sub;
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<BlogSubscriber>(`admin/blog/subscribers/${id}/deactivate`, {
+      method: "PATCH",
+    });
+  },
+
+  async removeSubscriber(id: string): Promise<void> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      store.blogSubscribers = store.blogSubscribers.filter((s) => s.id !== id);
+      return;
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<void>(`admin/blog/subscribers/${id}`, { method: "DELETE" });
+  },
+
+  async listNewsletters(): Promise<BlogNewsletter[]> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      return [];
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<BlogNewsletter[]>("admin/blog/newsletters");
+  },
+
+  async sendNewsletter(data: {
+    subject: string;
+    bodyHtml: string;
+  }): Promise<SendNewsletterResult> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const active = getStore().blogSubscribers.filter((s) => s.active);
+      return {
+        id: generateId("nl"),
+        subject: data.subject,
+        bodyHtml: data.bodyHtml,
+        recipientCount: active.length,
+        failedCount: 0,
+        createdAt: new Date().toISOString(),
+        sent: active.length,
+        failed: 0,
+        total: active.length,
+      };
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<SendNewsletterResult>("admin/blog/newsletters/send", {
+      method: "POST",
+      body: data,
+    });
   },
 };

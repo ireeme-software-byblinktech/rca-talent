@@ -1039,7 +1039,7 @@ export default function StudentPortfolioPage() {
           if (!open) setEditingProject(undefined);
         }}
       >
-        <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden">
+        <DialogContent className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-2xl flex-col gap-6 overflow-hidden p-6 sm:max-w-3xl sm:p-8">
           <DialogHeader>
             <DialogTitle>{editingProject ? "Edit project" : "New project"}</DialogTitle>
           </DialogHeader>

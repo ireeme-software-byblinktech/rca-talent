@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { PasswordInput } from "@/components/shared/PasswordInput";
+import { ChangePasswordForm } from "@/components/shared/ChangePasswordForm";
 import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
@@ -50,18 +50,7 @@ export default function StudentSettingsPage() {
             <Label>Email</Label>
             <Input value={user?.email ?? ""} disabled />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New password</Label>
-            <PasswordInput
-              id="newPassword"
-              label=""
-              placeholder="••••••••"
-              disabled
-            />
-            <p className="text-xs text-muted-foreground">
-              Password change will be available when connected to the NestJS backend.
-            </p>
-          </div>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 

@@ -169,4 +169,22 @@ export const authApi = {
     const { apiClient } = await import("./client");
     return apiClient<void>("auth/logout", { method: "POST" });
   },
+
+  async changePassword(data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ message: string }> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      if (data.currentPassword !== MOCK_PASSWORD) {
+        throw new Error("Current password is incorrect.");
+      }
+      return { message: "Password changed successfully." };
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<{ message: string }>("auth/change-password", {
+      method: "POST",
+      body: data,
+    });
+  },
 };

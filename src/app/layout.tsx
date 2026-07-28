@@ -10,13 +10,15 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "RCA Talent — Connect RCA Graduates with Employers",
+  title: "RCA Talent — Connect RCA Talents with Employers",
   description:
     "Rwanda Coding Academy talent marketplace. Students showcase verified profiles; companies discover and connect with the next generation of tech talent.",
   icons: {
-    icon: [{ url: "/logo.png", type: "image/png", sizes: "any" }],
-    apple: [{ url: "/logo.png", type: "image/png" }],
-    shortcut: "/logo.png",
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

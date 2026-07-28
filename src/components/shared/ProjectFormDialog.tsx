@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Globe, Sparkles, CheckCircle2 } from "lucide-react";
+import { Loader2, Globe, Sparkles, CheckCircle2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,14 @@ import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
 import { SKILL_OPTIONS } from "@/lib/mock/data";
+import {
+  MAX_CUSTOM_SKILL_LENGTH,
+  buildListedSkillsMap,
+  mergeSkillOptions,
+  normalizeSkillName,
+  sanitizeSkillList,
+  skillsEqual,
+} from "@/lib/skills/utils";
 import { isRenderableImageUrl } from "@/lib/utils";
 import type { Project } from "@/types";
 
@@ -48,7 +56,10 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [techStack, setTechStack] = useState<string[]>(project?.techStack ?? []);
+  const [techStack, setTechStack] = useState<string[]>(() =>
+    sanitizeSkillList(project?.techStack)
+  );
+  const [customTech, setCustomTech] = useState("");
   const [submitForReview, setSubmitForReview] = useState<boolean>(
     project ? project.publishStatus !== "private" && project.publishStatus !== "rejected" : false
   );
@@ -72,6 +83,72 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
         },
   });
 
+  const techOptions = useMemo(
+    () => mergeSkillOptions(SKILL_OPTIONS, techStack),
+    [techStack]
+  );
+
+  const listedTech = useMemo(
+    () => buildListedSkillsMap(SKILL_OPTIONS),
+    []
+  );
+
+  const toggleTech = (tech: string) => {
+    const normalized = normalizeSkillName(tech);
+    if (!normalized) return;
+    setTechStack((prev) => {
+      const exists = prev.some((item) => skillsEqual(item, normalized));
+      return exists
+        ? prev.filter((item) => !skillsEqual(item, normalized))
+        : [...prev, normalized];
+    });
+  };
+
+  const addCustomTech = () => {
+    const normalized = normalizeSkillName(customTech);
+    if (!normalized) {
+      toast({
+        variant: "destructive",
+        title: "Enter a technology name",
+      });
+      return;
+    }
+    if (normalized.length > MAX_CUSTOM_SKILL_LENGTH) {
+      toast({
+        variant: "destructive",
+        title: "Name too long",
+        description: `Keep it under ${MAX_CUSTOM_SKILL_LENGTH} characters.`,
+      });
+      return;
+    }
+
+    const listedMatch = listedTech.get(normalized.toLowerCase());
+    if (listedMatch) {
+      if (techStack.some((item) => skillsEqual(item, listedMatch))) {
+        toast({
+          title: "Already selected",
+          description: `"${listedMatch}" is already in your tech stack.`,
+        });
+      } else {
+        setTechStack((prev) => [...prev, listedMatch]);
+      }
+      setCustomTech("");
+      return;
+    }
+
+    if (techStack.some((item) => skillsEqual(item, normalized))) {
+      toast({
+        title: "Already selected",
+        description: `"${normalized}" is already in your tech stack.`,
+      });
+      setCustomTech("");
+      return;
+    }
+
+    setTechStack((prev) => [...prev, normalized]);
+    setCustomTech("");
+  };
+
   const mutation = useMutation({
     mutationFn: (data: ProjectForm) => {
       const cover = (data.coverImage ?? "").trim();
@@ -89,7 +166,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
       const payload = {
         title: data.title,
         description: data.description,
-        techStack,
+        techStack: sanitizeSkillList(techStack),
         links: {
           demo: data.demo?.trim() || undefined,
           repo: data.repo?.trim() || undefined,
@@ -138,7 +215,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           });
         }
       )}
-      className="flex max-h-[min(70vh,32rem)] flex-col gap-4 overflow-y-auto pr-1"
+      className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pr-1"
     >
       <div className="space-y-2">
         <Label htmlFor="project-title">Title</Label>
@@ -149,7 +226,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
       </div>
       <div className="space-y-2">
         <Label htmlFor="project-description">Description</Label>
-        <Textarea id="project-description" rows={3} {...form.register("description")} />
+        <Textarea id="project-description" rows={5} {...form.register("description")} />
         {errors.description && (
           <p className="text-xs text-destructive">{errors.description.message}</p>
         )}
@@ -167,24 +244,48 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
       </div>
       <div className="space-y-2">
         <Label>Tech stack</Label>
-        <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
-          {SKILL_OPTIONS.map((skill) => (
-            <Badge
-              key={skill}
-              variant={techStack.includes(skill) ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() =>
-                setTechStack((prev) =>
-                  prev.includes(skill)
-                    ? prev.filter((s) => s !== skill)
-                    : [...prev, skill]
-                )
-              }
-            >
-              {skill}
-            </Badge>
-          ))}
+        <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-xl border border-border/50 bg-muted/20 p-3">
+          {techOptions.map((tech) => {
+            const selected = techStack.some((item) => skillsEqual(item, tech));
+            return (
+              <Badge
+                key={tech}
+                variant={selected ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => toggleTech(tech)}
+              >
+                {tech}
+                {selected && <X className="ml-1 h-3 w-3" />}
+              </Badge>
+            );
+          })}
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={customTech}
+            onChange={(e) => setCustomTech(e.target.value)}
+            placeholder="Add a technology not listed…"
+            maxLength={MAX_CUSTOM_SKILL_LENGTH}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomTech();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 rounded-full"
+            onClick={addCustomTech}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Pick from the list or type your own (e.g. Supabase, Vue.js, Redis).
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="project-demo">Demo URL</Label>

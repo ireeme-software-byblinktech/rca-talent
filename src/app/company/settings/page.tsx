@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ChangePasswordForm } from "@/components/shared/ChangePasswordForm";
 import { useAuth } from "@/lib/auth/context";
 
 export default function CompanySettingsPage() {
@@ -28,9 +29,7 @@ export default function CompanySettingsPage() {
             <Label>Email</Label>
             <Input value={user?.email ?? ""} disabled />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Password change will be available when connected to the NestJS backend.
-          </p>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 
