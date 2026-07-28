@@ -11,6 +11,9 @@ function mapBackendNotification(raw: Record<string, unknown>): Notification {
     CONTACT_REQUEST_SENT: "contact_request",
     CONTACT_REQUEST_ACCEPTED: "contact_request",
     CONTACT_REQUEST_REJECTED: "contact_request",
+    PROJECT_PUBLISH_SUBMITTED: "project_publish",
+    PROJECT_PUBLISH_APPROVED: "project_publish",
+    PROJECT_PUBLISH_REJECTED: "project_publish",
     SYSTEM_ANNOUNCEMENT: "system",
   };
 

@@ -36,6 +36,12 @@ export interface StudentProfile {
   updatedAt: string;
 }
 
+export type ProjectPublishStatus =
+  | "private"
+  | "pending_review"
+  | "approved"
+  | "rejected";
+
 export interface Project {
   id: string;
   studentId: string;
@@ -44,6 +50,9 @@ export interface Project {
   techStack: string[];
   links: { demo?: string; repo?: string };
   images: string[];
+  publishStatus: ProjectPublishStatus;
+  rejectionReason?: string;
+  publishedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,7 +96,7 @@ export interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
-  type: "verification" | "contact_request" | "system" | "contract";
+  type: "verification" | "contact_request" | "system" | "contract" | "project_publish";
 }
 
 export interface AuthSession {

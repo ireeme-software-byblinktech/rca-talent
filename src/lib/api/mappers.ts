@@ -658,6 +658,13 @@ export function mapProject(
 ): Project {
   const nestedLinks = raw.links as { demo?: string; repo?: string } | undefined;
 
+  const publishStatusMap: Record<string, Project["publishStatus"]> = {
+    PRIVATE: "private",
+    PENDING_REVIEW: "pending_review",
+    APPROVED: "approved",
+    REJECTED: "rejected",
+  };
+
   return {
     id: String(raw.id ?? ""),
     studentId: studentUserId,
@@ -677,6 +684,9 @@ export function mapProject(
         undefined,
     },
     images: Array.isArray(raw.images) ? raw.images.map(String) : [],
+    publishStatus: publishStatusMap[raw.publishStatus as string] ?? "private",
+    rejectionReason: (raw.rejectionReason as string | undefined) ?? undefined,
+    publishedAt: raw.publishedAt ? toIso(raw.publishedAt as string | Date) : undefined,
     createdAt: toIso(raw.createdAt as string | Date),
     updatedAt: toIso(raw.updatedAt as string | Date),
   };
@@ -689,6 +699,7 @@ export function mapProjectToBackend(data: {
   techStack?: string[];
   links?: Project["links"];
   images?: string[];
+  submitForReview?: boolean;
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {};
 
@@ -696,6 +707,7 @@ export function mapProjectToBackend(data: {
   if (data.description !== undefined) body.description = data.description;
   if (data.techStack !== undefined) body.techStack = data.techStack;
   if (data.images !== undefined) body.images = data.images;
+  if (data.submitForReview !== undefined) body.submitForReview = data.submitForReview;
 
   if (data.links !== undefined) {
     body.demoUrl = data.links.demo ?? null;

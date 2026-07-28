@@ -5,12 +5,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,9 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [techStack, setTechStack] = useState<string[]>(project?.techStack ?? []);
+  const [submitForReview, setSubmitForReview] = useState<boolean>(
+    project ? project.publishStatus !== "private" && project.publishStatus !== "rejected" : false
+  );
 
   const form = useForm<ProjectForm>({
     resolver: zodResolver(projectSchema),
@@ -91,6 +95,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           repo: data.repo?.trim() || undefined,
         },
         images: validCover ? [validCover] : project?.images,
+        submitForReview,
       };
       return project
         ? studentsApi.updateProject(user!.id, project.id, payload)
@@ -202,6 +207,53 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
         {errors.repo && (
           <p className="text-xs text-destructive">{errors.repo.message}</p>
         )}
+      </div>
+
+      {/* ── Publish for Company Discovery Toggle ───────────────────────── */}
+      <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="submit-for-review" className="font-bold text-sm text-foreground cursor-pointer">
+                  Publish for Company Discovery
+                </Label>
+                <Badge variant="default" className="text-[10px] px-2 py-0 bg-primary/90">
+                  Optional
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Request admin review to showcase this project to hiring employers
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="submit-for-review"
+            checked={submitForReview}
+            onCheckedChange={setSubmitForReview}
+          />
+        </div>
+
+        <div className="rounded-lg bg-background/80 p-3 text-xs border leading-relaxed">
+          {submitForReview ? (
+            <div className="flex items-start gap-2 text-primary font-medium">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Company Verification Enabled:</strong> Saving will submit this project to RCA Talent admins. Once approved, hiring companies can discover this project and view your profile directly!
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 text-muted-foreground">
+              <Globe className="h-4 w-4 text-muted-foreground/70 shrink-0 mt-0.5" />
+              <span>
+                <strong>Standard Portfolio Mode (Off):</strong> Saves directly to your portfolio as a standard project. Turn the toggle ON above whenever you want companies to discover this project.
+              </span>
+            </div>
+          )}
+        </div>
       </div>
       <Button
         type="submit"

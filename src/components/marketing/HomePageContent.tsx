@@ -29,7 +29,7 @@ function buildLandingStats(stats: PublicPlatformStats) {
       verifiedRate: `${stats.verifiedProfileRate}%`,
     },
     strip: [
-      { value: formatPublicStat(stats.totalStudents), label: "RCA Graduates" },
+      { value: formatPublicStat(stats.totalStudents), label: "RCA Talents" },
       { value: formatPublicStat(stats.totalCompanies), label: "Partner Companies" },
       { value: formatPublicStat(stats.totalProjects), label: "Projects Showcased" },
       { value: `${stats.verifiedProfileRate}%`, label: "Verified Profiles" },
@@ -96,7 +96,7 @@ export function HomePageContent() {
             icon: <Shield className="h-8 w-8" />,
             title: "Get verified",
             description:
-              "RCA admins review every profile so employers know they're connecting with genuine RCA talent.",
+              "RCA Talent admins review every profile so employers know they're connecting with genuine RCA talent.",
             stat: "Step Two",
           },
           {
@@ -120,7 +120,7 @@ export function HomePageContent() {
                 </span>
               </div>
               <h2 className="mt-4 text-2xl font-bold sm:text-3xl text-white">
-                The talent marketplace RCA graduates deserve
+                The talent marketplace RCA talents deserve
               </h2>
               <p className="mt-3 text-white/80 leading-relaxed">
                 Whether you&apos;re launching your career or building your team, RCA Talent

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
 import {
   ArrowDown,
   ArrowUp,
@@ -55,28 +56,66 @@ interface DataTableProps<T> {
 
 type SortDir = "asc" | "desc" | null;
 
-function exportToCsv<T>(columns: Column<T>[], rows: T[], filename: string) {
+function exportToPdf<T>(columns: Column<T>[], rows: T[], filename: string) {
   const exportCols = columns.filter((c) => c.exportValue || c.key !== "actions");
-  const headers = exportCols.map((c) => c.header).join(",");
-  const body = rows
-    .map((row) =>
-      exportCols
-        .map((c) => {
-          const val = c.exportValue
-            ? c.exportValue(row)
-            : String(c.cell(row)).replace(/,/g, ";");
-          return `"${val}"`;
-        })
-        .join(",")
+  const headers = exportCols.map((c) => c.header);
+  const body = rows.map((row) =>
+    exportCols.map((c) =>
+      c.exportValue ? c.exportValue(row) : String(c.cell(row))
     )
-    .join("\n");
-  const blob = new Blob([`${headers}\n${body}`], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  );
+
+  const doc = new jsPDF({ orientation: "landscape" });
+  const MARGIN = 14;
+  const PAGE_W = doc.internal.pageSize.getWidth();
+  const colW = (PAGE_W - MARGIN * 2) / headers.length;
+
+  // ── Header row (navy bg, white text) ───────────────────────────────────────
+  doc.setFillColor(26, 43, 75);
+  doc.rect(MARGIN, MARGIN, PAGE_W - MARGIN * 2, 9, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  headers.forEach((h, i) => doc.text(h, MARGIN + i * colW + 2, MARGIN + 6));
+
+  // ── Data rows ───────────────────────────────────────────────────────────────
+  let y = MARGIN + 9;
+  body.forEach((row, rowIdx) => {
+    if (y + 9 > doc.internal.pageSize.getHeight() - MARGIN) {
+      doc.addPage();
+      y = MARGIN;
+    }
+    if (rowIdx % 2 === 0) {
+      doc.setFillColor(245, 247, 250);
+      doc.rect(MARGIN, y, PAGE_W - MARGIN * 2, 8, "F");
+    }
+    // reset to dark text for every row
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(28, 40, 60);
+    row.forEach((cell, i) => {
+      const text = doc.splitTextToSize(String(cell), colW - 4);
+      doc.text(text[0] ?? "", MARGIN + i * colW + 2, y + 5.5);
+    });
+    y += 8;
+  });
+
+  // ── Footer ──────────────────────────────────────────────────────────────────
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 130, 150);
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.text(
+      `Page ${p} of ${pageCount}  ·  RCA Talent Export  ·  ${new Date().toLocaleDateString()}`,
+      MARGIN,
+      pageH - 6
+    );
+  }
+
+  doc.save(filename.replace(".csv", ".pdf"));
 }
 
 export function DataTable<T extends { id?: string }>({
@@ -189,11 +228,11 @@ export function DataTable<T extends { id?: string }>({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  exportToCsv(columns, sorted, `export-${Date.now()}.csv`)
+                  exportToPdf(columns, sorted, `export-${Date.now()}.pdf`)
                 }
               >
                 <Download className="mr-2 h-4 w-4" />
-                Export CSV
+                Export PDF
               </Button>
             )}
             <Select

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -8,6 +9,10 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Globe,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,6 +108,28 @@ export default function StudentProjectsPage() {
           )}
         </div>
       ),
+    },
+    {
+      key: "publishStatus",
+      header: "Status",
+      exportValue: (row) => row.publishStatus,
+      cell: (row) => {
+        const badges: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+          private: { label: "Standard", icon: <Globe className="h-3 w-3" />, className: "bg-muted text-muted-foreground" },
+          pending_review: { label: "Under Review", icon: <Clock className="h-3 w-3" />, className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+          approved: { label: "Company Verified", icon: <CheckCircle2 className="h-3 w-3" />, className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+          rejected: { label: "Standard (Review Declined)", icon: <XCircle className="h-3 w-3" />, className: "bg-muted text-muted-foreground border border-red-200" },
+        };
+        const b = badges[row.publishStatus] ?? badges.private;
+        return (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${b.className}`}
+            title={row.publishStatus === "rejected" && row.rejectionReason ? `Reason: ${row.rejectionReason}` : undefined}
+          >
+            {b.icon} {b.label}
+          </span>
+        );
+      },
     },
     {
       key: "updated",

@@ -22,7 +22,7 @@ import { StudentHeroVisual } from "@/components/marketing/HeroVisuals";
 const STEPS = [
   { num: "01", title: "Create your profile", desc: "Add bio, skills, links, and job preferences." },
   { num: "02", title: "Build your portfolio", desc: "Add projects and publish your public page at /p/your-name." },
-  { num: "03", title: "Get verified", desc: "RCA admins review your profile for the verified badge." },
+  { num: "03", title: "Get verified", desc: "RCA Talent admins review your profile for the verified badge." },
   { num: "04", title: "Land opportunities", desc: "Accept contact requests and chat with recruiters directly." },
 ];
 

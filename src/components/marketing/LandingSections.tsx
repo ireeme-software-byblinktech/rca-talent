@@ -12,12 +12,12 @@ export function LandingHero({
 }) {
   const displayStats = stats
     ? [
-        { value: stats.graduates, label: "RCA Graduates" },
+        { value: stats.graduates, label: "RCA Talents" },
         { value: stats.companies, label: "Partner Companies" },
         { value: stats.verifiedRate, label: "Verified Profiles" },
       ]
     : [
-        { value: "0", label: "RCA Graduates" },
+        { value: "0", label: "RCA Talents" },
         { value: "0", label: "Partner Companies" },
         { value: "0%", label: "Verified Profiles" },
       ];
@@ -235,7 +235,7 @@ export function AudienceCardsSection() {
             variant="student"
             title="For Students"
             stat="Free forever"
-            description="Build your brand, publish a portfolio, and get discovered by employers actively hiring RCA graduates."
+            description="Build your brand, publish a portfolio, and get discovered by employers actively hiring RCA talents."
             features={[
               { icon: null, text: "Professional portfolio builder with custom URL" },
               { icon: null, text: "Admin-verified badge for credibility" },
