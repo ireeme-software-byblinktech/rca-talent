@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Code2, ExternalLink, FolderKanban, Search } from "lucide-react";
+import { FolderKanban, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -13,7 +13,6 @@ import { ProjectShowcaseCard } from "@/components/shared/ProjectShowcaseCard";
 import { ViewToggle, type ViewMode } from "@/components/shared/ViewToggle";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { studentsApi } from "@/lib/api/students";
-import { formatDate } from "@/lib/utils";
 import type { Project } from "@/types";
 
 type ApprovedProject = Project & {

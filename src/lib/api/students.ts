@@ -334,7 +334,7 @@ export const studentsApi = {
             ...p,
             student: profile
               ? {
-                  id: profile.id,
+                  id: profile.userId,
                   fullName: profile.fullName,
                   userId: profile.userId,
                   email: user?.email ?? "",
