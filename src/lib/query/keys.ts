@@ -68,10 +68,10 @@ export const queryKeys = {
   },
 
   admin: {
-    metrics: ["admin", "metrics"] as const,
+    metrics: ["admin-metrics"] as const,
     analytics: ["admin", "analytics"] as const,
-    pendingStudents: ["admin", "students", "pending"] as const,
-    pendingCompanies: ["admin", "companies", "pending"] as const,
+    pendingStudents: ["admin-pending-students"] as const,
+    pendingCompanies: ["admin-pending-companies"] as const,
     allStudents: ["admin", "students"] as const,
     allCompanies: ["admin", "companies"] as const,
     users: (params: Record<string, unknown>) =>
@@ -79,7 +79,10 @@ export const queryKeys = {
     auditLogs: (params: Record<string, unknown>) =>
       ["admin-audit-logs", params] as const,
     reports: ["admin", "reports", "platform"] as const,
-    moderation: ["admin", "moderation"] as const,
+    moderation: ["admin-content-reports"] as const,
+    supportStats: ["admin-support-stats"] as const,
+    supportTickets: ["admin-support-tickets"] as const,
+    userStats: ["admin-user-stats"] as const,
     blog: {
       posts: ["admin", "blog", "posts"] as const,
       subscribers: ["admin", "blog", "subscribers"] as const,

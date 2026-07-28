@@ -83,6 +83,7 @@ export default function AdminSupportPage() {
     }) => supportApi.update(id, { status, adminNote: note }),
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-support-stats"] });
       setSelected(null);
       toast({
         title:

@@ -32,6 +32,9 @@ export const adminApi = {
         pendingStudents: students.filter((s) => s.verificationStatus === "pending").length,
         rejectedStudents: students.filter((s) => s.verificationStatus === "rejected").length,
         totalCompanies: store.companyProfiles.length,
+        pendingCompanies: store.companyProfiles.filter(
+          (c) => c.verificationStatus === "pending"
+        ).length,
         totalContactRequests: requests.length,
         requestsByStatus: {
           pending: requests.filter((r) => r.status === "pending").length,
@@ -241,8 +244,39 @@ export const adminApi = {
     const raw = await apiClient<Record<string, unknown>[]>(
       `/admin/users${qs ? `?${qs}` : ""}`
     );
-    const users = raw.map((u) => mapUser(u as unknown as BackendUser));
+    const users = raw
+      .map((u) => mapUser(u as unknown as BackendUser))
+      .filter((u) => u.role !== "admin");
     return paginate(users, params.page ?? 1, params.pageSize ?? 50);
+  },
+
+  async getUserStats(): Promise<{
+    total: number;
+    students: number;
+    companies: number;
+    suspended: number;
+  }> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const users = getStore().users.filter((u) => u.role !== "admin");
+      return {
+        total: users.length,
+        students: users.filter((u) => u.role === "student").length,
+        companies: users.filter((u) => u.role === "company").length,
+        suspended: users.filter((u) => !u.isActive).length,
+      };
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>[]>("/admin/users");
+    const users = raw
+      .map((u) => mapUser(u as unknown as BackendUser))
+      .filter((u) => u.role !== "admin");
+    return {
+      total: users.length,
+      students: users.filter((u) => u.role === "student").length,
+      companies: users.filter((u) => u.role === "company").length,
+      suspended: users.filter((u) => !u.isActive).length,
+    };
   },
 
   async toggleUserStatus(userId: string, isActive: boolean): Promise<User> {

@@ -44,17 +44,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/lib/auth/context";
+import { adminApi } from "@/lib/api/admin";
 import { messagesApi } from "@/lib/api/messages";
+import { supportApi } from "@/lib/api/support";
 import { RCALogo } from "@/components/shared/RCALogo";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import type { UserRole } from "@/types";
+
+type NavBadge =
+  | "messages"
+  | "pendingStudents"
+  | "pendingCompanies"
+  | "supportOpen"
+  | "moderationPending";
 
 type NavLeaf = {
   kind: "link";
   href: string;
   label: string;
   icon: React.ReactNode;
-  badge?: "messages";
+  badge?: NavBadge;
 };
 
 type NavGroup = {
@@ -274,12 +283,14 @@ const navByRole: Record<UserRole, NavEntry[]> = {
           href: "/admin/verification",
           label: "Students",
           icon: <Users className="h-4 w-4" />,
+          badge: "pendingStudents",
         },
         {
           kind: "link",
           href: "/admin/employer-verification",
           label: "Employers",
           icon: <Building2 className="h-4 w-4" />,
+          badge: "pendingCompanies",
         },
       ],
     },
@@ -300,12 +311,14 @@ const navByRole: Record<UserRole, NavEntry[]> = {
           href: "/admin/moderation",
           label: "Moderation",
           icon: <Flag className="h-4 w-4" />,
+          badge: "moderationPending",
         },
         {
           kind: "link",
           href: "/admin/support",
           label: "Support inbox",
           icon: <LifeBuoy className="h-4 w-4" />,
+          badge: "supportOpen",
         },
         {
           kind: "link",
@@ -395,10 +408,46 @@ export function AppShell({ children, role, title }: AppShellProps) {
     refetchInterval: 30000,
   });
 
+  const { data: adminMetrics } = useQuery({
+    queryKey: ["admin-metrics"],
+    queryFn: () => adminApi.getMetrics(),
+    enabled: !!user && role === "admin",
+    refetchInterval: 30000,
+  });
+
+  const { data: supportStats } = useQuery({
+    queryKey: ["admin-support-stats"],
+    queryFn: () => supportApi.getStats(),
+    enabled: !!user && role === "admin",
+    refetchInterval: 30000,
+  });
+
+  const { data: contentReports = [] } = useQuery({
+    queryKey: ["admin-content-reports"],
+    queryFn: () => adminApi.getContentReports(),
+    enabled: !!user && role === "admin",
+    refetchInterval: 30000,
+  });
+
   const unreadMessages = useMemo(
     () => conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     [conversations]
   );
+
+  const badgeCounts = useMemo(
+    (): Record<NavBadge, number> => ({
+      messages: unreadMessages,
+      pendingStudents: adminMetrics?.pendingStudents ?? 0,
+      pendingCompanies: adminMetrics?.pendingCompanies ?? 0,
+      supportOpen: (supportStats?.open ?? 0) + (supportStats?.inProgress ?? 0),
+      moderationPending: contentReports.filter((r) => r.status === "pending")
+        .length,
+    }),
+    [unreadMessages, adminMetrics, supportStats, contentReports]
+  );
+
+  const getBadgeCount = (badge?: NavBadge) =>
+    badge ? badgeCounts[badge] : 0;
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
@@ -413,7 +462,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
 
   const renderLink = (item: NavLeaf, nested = false) => {
     const active = pathMatches(pathname, item.href);
-    const badgeCount = item.badge === "messages" ? unreadMessages : 0;
+    const badgeCount = getBadgeCount(item.badge);
 
     return (
       <Link
@@ -477,6 +526,10 @@ export function AppShell({ children, role, title }: AppShellProps) {
             const childActive = entry.children.some((c) =>
               pathMatches(pathname, c.href)
             );
+            const groupBadgeCount = entry.children.reduce(
+              (sum, child) => sum + getBadgeCount(child.badge),
+              0
+            );
 
             return (
               <div key={entry.id} className="space-y-1">
@@ -492,6 +545,7 @@ export function AppShell({ children, role, title }: AppShellProps) {
                 >
                   {entry.icon}
                   <span className="flex-1 truncate text-left">{entry.label}</span>
+                  {!expanded && <CountBadge count={groupBadgeCount} />}
                   <ChevronDown
                     className={cn(
                        "h-4 w-4 shrink-0 opacity-80 transition-transform",

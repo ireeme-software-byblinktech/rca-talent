@@ -39,6 +39,11 @@ export default function AdminUsersPage() {
       }),
   });
 
+  const { data: userStats } = useQuery({
+    queryKey: ["admin-user-stats"],
+    queryFn: () => adminApi.getUserStats(),
+  });
+
   const users = useMemo(() => data?.data ?? [], [data?.data]);
 
   const toggleMutation = useMutation({
@@ -46,6 +51,7 @@ export default function AdminUsersPage() {
       adminApi.toggleUserStatus(userId, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-user-stats"] });
       toast({ title: "User status updated" });
     },
     onError: (err) => {
@@ -59,24 +65,28 @@ export default function AdminUsersPage() {
 
   const metrics = useMemo(
     () => [
-      { label: "Total users", value: users.length, color: "text-primary" },
+      {
+        label: "Total users",
+        value: userStats?.total ?? 0,
+        color: "text-primary",
+      },
       {
         label: "Students",
-        value: users.filter((u) => u.role === "student").length,
+        value: userStats?.students ?? 0,
         color: "text-emerald-600",
       },
       {
         label: "Companies",
-        value: users.filter((u) => u.role === "company").length,
+        value: userStats?.companies ?? 0,
         color: "text-sky-600",
       },
       {
         label: "Suspended",
-        value: users.filter((u) => !u.isActive).length,
+        value: userStats?.suspended ?? 0,
         color: "text-rose-600",
       },
     ],
-    [users]
+    [userStats]
   );
 
   const columns: Column<User>[] = [
@@ -151,7 +161,7 @@ export default function AdminUsersPage() {
         description="Manage students and companies on the platform"
       />
 
-      {!isLoading && users.length > 0 && <AdminMetricStrip metrics={metrics} />}
+      {userStats && <AdminMetricStrip metrics={metrics} />}
 
       <div className="fancy-card rounded-2xl border border-border/50 p-4 !translate-y-0 !shadow-card">
         <div className="flex flex-col gap-3 sm:flex-row">

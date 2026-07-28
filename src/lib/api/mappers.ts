@@ -138,7 +138,8 @@ export function mapUser(raw: BackendUser): User {
     email: raw.email,
     role: mapRole(raw.role),
     createdAt: toIso(raw.createdAt),
-    isActive: status === "ACTIVE",
+    // Only truly deactivated accounts count as inactive; pending verification is still "active"
+    isActive: status !== "SUSPENDED" && status !== "INACTIVE",
   };
 }
 

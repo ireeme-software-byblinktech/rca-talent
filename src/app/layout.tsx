@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "RCA Talent — Connect RCA Graduates with Employers",
   description:
     "Rwanda Coding Academy talent marketplace. Students showcase verified profiles; companies discover and connect with the next generation of tech talent.",
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png", sizes: "any" }],
+    apple: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: "/logo.png",
+  },
 };
 
 export default function RootLayout({
