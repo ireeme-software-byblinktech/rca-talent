@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  Clock,
   Code2,
   ExternalLink,
   FolderSearch,
@@ -19,11 +18,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { DataTable, type Column } from "@/components/shared/DataTable";
+import { ProjectShowcaseCard } from "@/components/shared/ProjectShowcaseCard";
 import { ViewToggle, type ViewMode } from "@/components/shared/ViewToggle";
 import { adminProjectsApi } from "@/lib/api/adminProjects";
 import { useToast } from "@/hooks/use-toast";
@@ -185,87 +184,20 @@ export default function AdminProjectReviewsPage() {
           description="When students submit projects for publication they will appear here."
         />
       ) : view === "cards" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
-            <div
+            <ProjectShowcaseCard
               key={project.id}
-              className="flex flex-col rounded-xl border bg-card p-5 shadow-sm gap-4"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-0.5 min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{project.title}</h3>
-                  {project.student && (
-                    <p className="text-xs text-muted-foreground">
-                      {project.student.fullName}
-                      <span className="text-muted-foreground/60 mx-1">·</span>
-                      {project.student.email}
-                    </p>
-                  )}
-                </div>
-                <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1">
-                  <Clock className="h-3 w-3" /> Under Review
-                </Badge>
-              </div>
-
-              {/* Description */}
-              <p className="text-xs text-muted-foreground line-clamp-3">
-                {project.description}
-              </p>
-
-              {/* Tech stack */}
-              {project.techStack.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {project.techStack.slice(0, 5).map((t) => (
-                    <span key={t} className="skill-pill text-[10px]">{t}</span>
-                  ))}
-                  {project.techStack.length > 5 && (
-                    <span className="skill-pill skill-pill-muted text-[10px]">
-                      +{project.techStack.length - 5}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Links + date */}
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {project.links.demo && (
-                  <a href={project.links.demo} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 hover:text-primary">
-                    <ExternalLink className="h-3 w-3" /> Demo
-                  </a>
-                )}
-                {project.links.repo && (
-                  <a href={project.links.repo} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 hover:text-primary">
-                    <Code2 className="h-3 w-3" /> Repo
-                  </a>
-                )}
-                <span className="ml-auto">{formatDate(project.updatedAt)}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-1 border-t">
-                <Button
-                  size="sm"
-                  className="flex-1 gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700"
-                  onClick={() => approveMutation.mutate(project.id)}
-                  disabled={approveMutation.isPending}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 gap-1.5 rounded-full border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={() => { setRejectTarget(project); setRejectReason(""); }}
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  Reject
-                </Button>
-              </div>
-            </div>
+              project={project}
+              owner={project.student}
+              variant="review"
+              approvePending={approveMutation.isPending}
+              onApprove={() => approveMutation.mutate(project.id)}
+              onReject={() => {
+                setRejectTarget(project);
+                setRejectReason("");
+              }}
+            />
           ))}
         </div>
       ) : (
