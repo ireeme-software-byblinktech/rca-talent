@@ -9,7 +9,6 @@ import {
   FolderKanban,
   GraduationCap,
   Link2,
-  Mail,
   Pencil,
   Sparkles,
   Trophy,
@@ -19,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AchievementCard, CertificationCard } from "@/components/shared/CredentialCard";
 import { ProjectCard } from "@/components/shared/ProjectCard";
+import { PortfolioCvDownloadButton } from "@/components/shared/PortfolioCvDownloadButton";
 import { RCALogo } from "@/components/shared/RCALogo";
 import { cn } from "@/lib/utils";
 import type { PortfolioSections, PortfolioTheme, PublicPortfolio } from "@/types";
@@ -100,6 +100,10 @@ const DEFAULT_SECTIONS: PortfolioSections = {
 
 export function PublicPortfolioView({ portfolio, preview, onEditSection }: PublicPortfolioViewProps) {
   const { config, profile, projects, certifications, achievements } = portfolio;
+  const showCvDownload =
+    (profile.hasCv ?? Boolean(profile.cvUrl)) &&
+    Boolean(config.slug) &&
+    (!preview || config.isPublished);
   const theme: PortfolioTheme =
     config?.theme && themeConfig[config.theme] ? config.theme : "modern";
   const sections: PortfolioSections = {
@@ -248,18 +252,12 @@ export function PublicPortfolioView({ portfolio, preview, onEditSection }: Publi
                   </a>
                 </Button>
               )}
-              {profile.cvUrl && (
-                <Button
-                  size="sm"
+              {showCvDownload && (
+                <PortfolioCvDownloadButton
+                  slug={config.slug}
                   variant={isDarkHero ? "secondary" : "outline"}
-                  className={cn("rounded-full", isDarkHero && "bg-white/15 text-white hover:bg-white/25 border-white/20")}
-                  asChild
-                >
-                  <a href={profile.cvUrl} target="_blank" rel="noopener noreferrer">
-                    <Mail className="mr-2 h-4 w-4" />
-                    Download CV
-                  </a>
-                </Button>
+                  className={cn(isDarkHero && "bg-white/15 text-white hover:bg-white/25 border-white/20")}
+                />
               )}
             </div>
           </div>

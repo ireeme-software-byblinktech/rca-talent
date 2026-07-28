@@ -198,6 +198,9 @@ export function mapStudentProfile(raw: Record<string, unknown>): StudentProfile 
       (raw.avatarUrl as string) ?? (raw.photoUrl as string)
     ),
     cvUrl: resolveMediaUrl(raw.cvUrl as string | undefined),
+    hasCv:
+      raw.hasCv === true ||
+      !!(raw.cvUrl as string | undefined),
     verificationStatus: mapVerificationStatus(
       (raw.verificationStatus as string) ?? "PENDING"
     ),

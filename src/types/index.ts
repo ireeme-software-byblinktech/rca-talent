@@ -28,6 +28,8 @@ export interface StudentProfile {
   links: StudentLinks;
   photoUrl?: string;
   cvUrl?: string;
+  /** Set on public portfolios when cvUrl is withheld from the API */
+  hasCv?: boolean;
   verificationStatus: VerificationStatus;
   rejectionReason?: string;
   cohortYear: number;
