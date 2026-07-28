@@ -122,9 +122,9 @@ export function FeatureGrid({
 
             {/* Desktop Roadmap Path with Data Points (md+) */}
             <div className="relative hidden md:block h-[380px] lg:h-[320px]">
-              {/* Winding Road SVG Path */}
+              {/* Winding Road SVG Path — pushed down so step text stays visible */}
               <svg 
-                className="absolute inset-0 w-full h-full pointer-events-none" 
+                className="absolute inset-x-0 bottom-[-40px] h-full w-full pointer-events-none translate-y-8 lg:translate-y-10" 
                 viewBox="0 0 1100 320" 
                 preserveAspectRatio="none"
               >
@@ -154,7 +154,7 @@ export function FeatureGrid({
               {/* Data Points positioned along the path */}
               <div className="relative h-full">
                 
-                {/* Data Point 01 - Bottom Left - ABOVE ROAD */}
+                {/* Data Point 01 - Bottom Left */}
                 <div className="absolute left-[5%] bottom-[32%] lg:left-[8%] lg:bottom-[35%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
                     <div className="absolute inset-0 bg-[#1A2B4B]/20 blur-2xl rounded-full scale-150" />
@@ -185,8 +185,8 @@ export function FeatureGrid({
                   </div>
                 </div>
 
-                {/* Data Point 02 - Middle - ABOVE ROAD */}
-                <div className="absolute left-[38%] bottom-[42%] lg:left-[45%] lg:bottom-[45%] flex flex-col items-center text-center z-10">
+                {/* Data Point 02 - Middle */}
+                <div className="absolute left-[38%] bottom-[40%] lg:left-[45%] lg:bottom-[42%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
                     <div className="absolute inset-0 bg-[#3B5998]/20 blur-2xl rounded-full scale-150" />
                     
@@ -216,8 +216,8 @@ export function FeatureGrid({
                   </div>
                 </div>
 
-                {/* Data Point 03 - Top Right - ABOVE ROAD */}
-                <div className="absolute right-[5%] bottom-[62%] lg:right-[8%] lg:bottom-[58%] flex flex-col items-center text-center z-10">
+                {/* Data Point 03 - Top Right */}
+                <div className="absolute right-[5%] bottom-[48%] lg:right-[8%] lg:bottom-[50%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
                     <div className="absolute inset-0 bg-[#2A4070]/20 blur-2xl rounded-full scale-150" />
                     
