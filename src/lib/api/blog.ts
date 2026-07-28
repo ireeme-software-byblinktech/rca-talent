@@ -1,6 +1,6 @@
 import { isMockMode } from "@/lib/config/env";
 import { generateId, getStore, simulateDelay } from "@/lib/mock/store";
-import type { BlogPost, BlogSubscriber, BlogNewsletter, SendNewsletterResult } from "@/types";
+import type { BlogPost, BlogSubscriber, BlogNewsletter, PaginatedResponse, SendNewsletterResult } from "@/types";
 
 const USE_MOCK = isMockMode();
 
@@ -221,16 +221,59 @@ export const blogApi = {
     return apiClient<number>("admin/blog/subscribers/count");
   },
 
-  async listSubscribers(): Promise<BlogSubscriber[]> {
+  async listSubscribers(params?: {
+    page?: number;
+    pageSize?: number;
+    active?: boolean;
+  }): Promise<PaginatedResponse<BlogSubscriber>> {
     if (USE_MOCK) {
       await simulateDelay();
-      return getStore().blogSubscribers.sort(
+      const all = getStore().blogSubscribers.sort(
         (a, b) =>
           new Date(b.subscribedAt).getTime() - new Date(a.subscribedAt).getTime()
       );
+      const filtered =
+        params?.active === undefined
+          ? all
+          : all.filter((s) => s.active === params.active);
+      const page = params?.page ?? 1;
+      const pageSize = params?.pageSize ?? 20;
+      const start = (page - 1) * pageSize;
+      const items = filtered.slice(start, start + pageSize);
+      const total = filtered.length;
+      return {
+        items,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogSubscriber[]>("admin/blog/subscribers");
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.pageSize) searchParams.set("pageSize", String(params.pageSize));
+    if (params?.active !== undefined) {
+      searchParams.set("active", String(params.active));
+    }
+    const qs = searchParams.toString();
+    return apiClient<PaginatedResponse<BlogSubscriber>>(
+      `admin/blog/subscribers${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  async activateSubscriber(id: string): Promise<BlogSubscriber> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const sub = getStore().blogSubscribers.find((s) => s.id === id);
+      if (!sub) throw new Error("Subscriber not found");
+      sub.active = true;
+      return sub;
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<BlogSubscriber>(`admin/blog/subscribers/${id}/activate`, {
+      method: "PATCH",
+    });
   },
 
   async deactivateSubscriber(id: string): Promise<BlogSubscriber> {
@@ -258,13 +301,41 @@ export const blogApi = {
     return apiClient<void>(`admin/blog/subscribers/${id}`, { method: "DELETE" });
   },
 
-  async listNewsletters(): Promise<BlogNewsletter[]> {
+  async listNewsletters(params?: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<BlogNewsletter>> {
     if (USE_MOCK) {
       await simulateDelay();
-      return [];
+      return { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 };
     }
     const { apiClient } = await import("./client");
-    return apiClient<BlogNewsletter[]>("admin/blog/newsletters");
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.pageSize) searchParams.set("pageSize", String(params.pageSize));
+    const qs = searchParams.toString();
+    return apiClient<PaginatedResponse<BlogNewsletter>>(
+      `admin/blog/newsletters${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  async deactivateNewsletter(id: string): Promise<BlogNewsletter> {
+    const { apiClient } = await import("./client");
+    return apiClient<BlogNewsletter>(`admin/blog/newsletters/${id}/deactivate`, {
+      method: "PATCH",
+    });
+  },
+
+  async activateNewsletter(id: string): Promise<BlogNewsletter> {
+    const { apiClient } = await import("./client");
+    return apiClient<BlogNewsletter>(`admin/blog/newsletters/${id}/activate`, {
+      method: "PATCH",
+    });
+  },
+
+  async deleteNewsletter(id: string): Promise<void> {
+    const { apiClient } = await import("./client");
+    return apiClient<void>(`admin/blog/newsletters/${id}`, { method: "DELETE" });
   },
 
   async sendNewsletter(data: {
@@ -280,6 +351,7 @@ export const blogApi = {
         bodyHtml: data.bodyHtml,
         recipientCount: active.length,
         failedCount: 0,
+        active: true,
         createdAt: new Date().toISOString(),
         sent: active.length,
         failed: 0,

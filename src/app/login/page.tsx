@@ -30,6 +30,7 @@ function LoginForm() {
   const defaultRole = searchParams.get("role") ?? "student";
   const verified = searchParams.get("verified");
   const passwordChanged = searchParams.get("passwordChanged");
+  const emailChanged = searchParams.get("emailChanged");
   const [role] = useState<"student" | "company">(
     defaultRole === "company" ? "company" : "student"
   );
@@ -66,6 +67,15 @@ function LoginForm() {
       });
     }
   }, [passwordChanged, toast]);
+
+  useEffect(() => {
+    if (emailChanged === "1") {
+      toast({
+        title: "Email updated",
+        description: "Sign in again with your new email address.",
+      });
+    }
+  }, [emailChanged, toast]);
 
   const {
     register,

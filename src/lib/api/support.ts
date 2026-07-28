@@ -70,9 +70,11 @@ const ROLE_FROM_API: Record<string, UserRole> = {
   STUDENT: "student",
   COMPANY: "company",
   ADMIN: "admin",
+  CONTENT_MANAGER: "content_manager",
   student: "student",
   company: "company",
   admin: "admin",
+  content_manager: "content_manager",
 };
 
 function mapSubmitter(

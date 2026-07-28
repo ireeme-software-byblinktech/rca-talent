@@ -29,6 +29,13 @@ export const mockUsers: User[] = [
     isActive: true,
   },
   {
+    id: "user-content-manager-1",
+    email: "content@rca.rw",
+    role: "content_manager",
+    createdAt: "2024-01-01T00:00:00Z",
+    isActive: true,
+  },
+  {
     id: "user-student-1",
     email: "alice@student.rw",
     role: "student",

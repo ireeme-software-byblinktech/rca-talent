@@ -187,4 +187,25 @@ export const authApi = {
       body: data,
     });
   },
+
+  async changeEmail(data: {
+    currentPassword: string;
+    newEmail: string;
+  }): Promise<{ message: string }> {
+    if (USE_MOCK) {
+      await simulateDelay();
+      if (data.currentPassword !== MOCK_PASSWORD) {
+        throw new Error("Current password is incorrect.");
+      }
+      const store = getStore();
+      const user = store.users.find((u) => u.isActive);
+      if (user) user.email = data.newEmail.trim().toLowerCase();
+      return { message: "Email changed successfully." };
+    }
+    const { apiClient } = await import("./client");
+    return apiClient<{ message: string }>("auth/change-email", {
+      method: "POST",
+      body: data,
+    });
+  },
 };

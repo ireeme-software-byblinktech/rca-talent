@@ -361,6 +361,20 @@ const navByRole: Record<UserRole, NavEntry[]> = {
       ],
     },
   ],
+  content_manager: [
+    {
+      kind: "link",
+      href: "/admin/blog",
+      label: "Blog",
+      icon: <Newspaper className="h-4 w-4" />,
+    },
+    {
+      kind: "link",
+      href: "/admin/settings",
+      label: "Settings",
+      icon: <Settings className="h-4 w-4" />,
+    },
+  ],
 };
 
 function pathMatches(pathname: string, href: string) {

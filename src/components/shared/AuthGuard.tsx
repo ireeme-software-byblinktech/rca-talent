@@ -27,6 +27,7 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
         student: "/student",
         company: "/company",
         admin: "/admin",
+        content_manager: "/admin/blog",
       };
       router.replace(roleRoutes[user.role]);
     }

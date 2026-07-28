@@ -1,4 +1,4 @@
-export type UserRole = "student" | "company" | "admin";
+export type UserRole = "student" | "company" | "admin" | "content_manager";
 
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
@@ -339,7 +339,16 @@ export interface BlogNewsletter {
   sentBy?: string;
   recipientCount: number;
   failedCount: number;
+  active: boolean;
   createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface SendNewsletterResult extends BlogNewsletter {

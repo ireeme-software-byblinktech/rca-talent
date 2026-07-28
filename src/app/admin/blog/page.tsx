@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Mail, Newspaper, Plus } from "lucide-react";
+import { Loader2, Mail, Newspaper, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { AdminBlogPostCard } from "@/components/admin/AdminBlogPostCard";
 import { AdminNewsletterPanel } from "@/components/admin/AdminNewsletterPanel";
+import { AdminSubscribersPanel } from "@/components/admin/AdminSubscribersPanel";
 import { AdminMetricStrip } from "@/components/admin/AdminMetricStrip";
 import { BlogCoverUpload } from "@/components/admin/BlogCoverUpload";
 import { BlogEditor } from "@/components/admin/BlogEditor";
@@ -285,6 +286,10 @@ export default function AdminBlogPage() {
             <Mail className="h-4 w-4" />
             Newsletter
           </TabsTrigger>
+          <TabsTrigger value="subscribers" className="gap-1.5">
+            <Users className="h-4 w-4" />
+            Subscribers
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts">
@@ -319,6 +324,10 @@ export default function AdminBlogPage() {
 
         <TabsContent value="newsletter">
           <AdminNewsletterPanel />
+        </TabsContent>
+
+        <TabsContent value="subscribers">
+          <AdminSubscribersPanel />
         </TabsContent>
       </Tabs>
     </div>

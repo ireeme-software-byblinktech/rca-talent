@@ -61,6 +61,7 @@ const ROLE_MAP: Record<string, UserRole> = {
   STUDENT: "student",
   COMPANY: "company",
   ADMIN: "admin",
+  CONTENT_MANAGER: "content_manager",
 };
 
 const VERIFICATION_MAP: Record<string, VerificationStatus> = {
