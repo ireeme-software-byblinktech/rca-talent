@@ -185,8 +185,8 @@ export function FeatureGrid({
                   </div>
                 </div>
 
-                {/* Data Point 02 - Middle - BELOW ROAD */}
-                <div className="absolute left-[38%] bottom-[8%] lg:left-[45%] lg:bottom-[10%] flex flex-col items-center text-center z-10">
+                {/* Data Point 02 - Middle - ABOVE ROAD */}
+                <div className="absolute left-[38%] bottom-[42%] lg:left-[45%] lg:bottom-[45%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
                     <div className="absolute inset-0 bg-[#3B5998]/20 blur-2xl rounded-full scale-150" />
                     
@@ -217,7 +217,7 @@ export function FeatureGrid({
                 </div>
 
                 {/* Data Point 03 - Top Right - ABOVE ROAD */}
-                <div className="absolute right-[5%] top-[25%] lg:right-[8%] lg:top-[20%] flex flex-col items-center text-center z-10">
+                <div className="absolute right-[5%] bottom-[62%] lg:right-[8%] lg:bottom-[58%] flex flex-col items-center text-center z-10">
                   <div className="relative mb-4">
                     <div className="absolute inset-0 bg-[#2A4070]/20 blur-2xl rounded-full scale-150" />
                     
