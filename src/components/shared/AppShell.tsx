@@ -189,6 +189,12 @@ const navByRole: Record<UserRole, NavEntry[]> = {
         },
         {
           kind: "link",
+          href: "/company/verified-projects",
+          label: "Verified Projects",
+          icon: <FolderKanban className="h-4 w-4" />,
+        },
+        {
+          kind: "link",
           href: "/company/bookmarks",
           label: "Saved Talent",
           icon: <Bookmark className="h-4 w-4" />,

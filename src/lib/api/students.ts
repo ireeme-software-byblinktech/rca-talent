@@ -304,6 +304,70 @@ export const studentsApi = {
       .sort((a, b) => a.localeCompare(b));
   },
 
+  /**
+   * Admin-approved projects with student owner info (company discovery).
+   */
+  async getApprovedProjects(): Promise<
+    Array<
+      Project & {
+        student?: {
+          id: string;
+          fullName: string;
+          userId: string;
+          email: string;
+          cohortYear?: number | null;
+        };
+      }
+    >
+  > {
+    if (USE_MOCK) {
+      await simulateDelay();
+      const store = getStore();
+      return store.projects
+        .filter((p) => p.publishStatus === "approved")
+        .map((p) => {
+          const profile = store.studentProfiles.find(
+            (s) => s.userId === p.studentId
+          );
+          const user = store.users.find((u) => u.id === p.studentId);
+          return {
+            ...p,
+            student: profile
+              ? {
+                  id: profile.userId,
+                  fullName: profile.fullName,
+                  userId: profile.userId,
+                  email: user?.email ?? "",
+                  cohortYear: profile.cohortYear,
+                }
+              : undefined,
+          };
+        });
+    }
+    const { apiClient } = await import("./client");
+    const raw = await apiClient<Record<string, unknown>[]>("/projects/approved");
+    return raw.map((item) => {
+      const project = mapProject(item, String(item.studentProfileId ?? ""));
+      const sp = item.studentProfile as Record<string, unknown> | undefined;
+      const user = sp?.user as Record<string, unknown> | undefined;
+      return {
+        ...project,
+        student: sp
+          ? {
+              id: String(sp.id ?? ""),
+              fullName:
+                ((sp.fullName as string) ??
+                  `${sp.firstName ?? ""} ${sp.lastName ?? ""}`.trim()) ||
+                "Student",
+              userId: String(sp.userId ?? ""),
+              email: String(user?.email ?? ""),
+              cohortYear: (sp.cohortYear as number | null | undefined) ?? null,
+            }
+          : undefined,
+      };
+    });
+  },
+
   getProfileCompleteness(profile: StudentProfile, projectCount: number): number {
     let score = 0;
     if (profile.fullName) score += 15;

@@ -1,12 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  ArrowLeft,
   Bookmark,
   Code2,
   ExternalLink,
@@ -29,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { ProjectCard } from "@/components/shared/ProjectCard";
+import { ProjectsCarousel } from "@/components/shared/ProjectsCarousel";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { contactRequestsApi } from "@/lib/api/contactRequests";
 import { bookmarksApi } from "@/lib/api/bookmarks";
@@ -43,7 +45,9 @@ const messageSchema = z.object({
 
 export default function CompanyStudentProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const studentId = params.id as string;
+  const fromVerifiedProjects = searchParams.get("from") === "verified-projects";
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -59,6 +63,12 @@ export default function CompanyStudentProfilePage() {
     queryFn: () => studentsApi.getProjects(studentId),
     enabled: !!studentId,
   });
+
+  const displayProjects = useMemo(() => {
+    if (!fromVerifiedProjects) return projects;
+    const approved = projects.filter((p) => p.publishStatus === "approved");
+    return approved.length > 0 ? approved : projects;
+  }, [projects, fromVerifiedProjects]);
 
   const { data: existingRequest } = useQuery({
     queryKey: ["existing-request", user?.id, studentId],
@@ -119,6 +129,20 @@ export default function CompanyStudentProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {fromVerifiedProjects && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 -ml-2 text-muted-foreground"
+          asChild
+        >
+          <Link href="/company/verified-projects">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Verified Projects
+          </Link>
+        </Button>
+      )}
+
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -153,47 +177,49 @@ export default function CompanyStudentProfilePage() {
                   onClick={() => bookmarkMutation.mutate()}
                   disabled={bookmarkMutation.isPending}
                 >
-                  <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
+                  <Bookmark
+                    className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
+                  />
                 </Button>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Send className="mr-2 h-4 w-4" />
-                    Send Contact Request
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Contact {student.fullName}</DialogTitle>
-                  </DialogHeader>
-                  <form
-                    onSubmit={form.handleSubmit((d) =>
-                      sendMutation.mutate(d.message)
-                    )}
-                    className="space-y-4"
-                  >
-                    <div className="space-y-2">
-                      <Label>Your message</Label>
-                      <Textarea
-                        rows={4}
-                        placeholder="Introduce your company and the opportunity..."
-                        {...form.register("message")}
-                      />
-                      {form.formState.errors.message && (
-                        <p className="text-sm text-destructive">
-                          {form.formState.errors.message.message}
-                        </p>
-                      )}
-                    </div>
-                    <Button type="submit" disabled={sendMutation.isPending}>
-                      {sendMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Send request
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Contact Request
                     </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Contact {student.fullName}</DialogTitle>
+                    </DialogHeader>
+                    <form
+                      onSubmit={form.handleSubmit((d) =>
+                        sendMutation.mutate(d.message)
+                      )}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <Label>Your message</Label>
+                        <Textarea
+                          rows={4}
+                          placeholder="Introduce your company and the opportunity..."
+                          {...form.register("message")}
+                        />
+                        {form.formState.errors.message && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.message.message}
+                          </p>
+                        )}
+                      </div>
+                      <Button type="submit" disabled={sendMutation.isPending}>
+                        {sendMutation.isPending && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        Send request
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
           </div>
@@ -247,15 +273,7 @@ export default function CompanyStudentProfilePage() {
 
       <div>
         <h2 className="text-xl font-semibold mb-4">Projects</h2>
-        {projects.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No projects listed.</p>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} readOnly />
-            ))}
-          </div>
-        )}
+        <ProjectsCarousel projects={displayProjects} />
       </div>
     </div>
   );
