@@ -23,8 +23,11 @@ import { DataTable, type Column } from "@/components/shared/DataTable";
 import { studentsApi } from "@/lib/api/students";
 import { COHORT_YEARS, SKILL_OPTIONS } from "@/lib/mock/data";
 import type { Availability, StudentWithUser } from "@/types";
+import { FolderKanban } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function CompanySearchPage() {
+  const [searchMode, setSearchMode] = useState<"students" | "projects">("students");
   const [query, setQuery] = useState("");
   const [cohortYear, setCohortYear] = useState<string>("all");
   const [availability, setAvailability] = useState<string>("all");
@@ -142,10 +145,35 @@ export default function CompanySearchPage() {
     <div className="space-y-6">
       <PageHeader
         title="Find Talent"
-        description="Search verified RCA graduate profiles"
+        description="Search verified RCA talents and company-verified projects"
       >
         <ViewToggle value={view} onChange={setView} />
       </PageHeader>
+
+      {/* Mode Switcher */}
+      <div className="flex items-center gap-2 border-b pb-3">
+        <Button
+          variant={searchMode === "students" ? "default" : "outline"}
+          size="sm"
+          className="rounded-full gap-2 font-medium"
+          onClick={() => setSearchMode("students")}
+        >
+          <Users className="h-4 w-4" />
+          Talent Profiles
+        </Button>
+        <Button
+          variant={searchMode === "projects" ? "default" : "outline"}
+          size="sm"
+          className="rounded-full gap-2 font-medium"
+          onClick={() => setSearchMode("projects")}
+        >
+          <FolderKanban className="h-4 w-4" />
+          Verified Projects
+          <Badge variant="secondary" className="ml-1 text-[10px] bg-primary-foreground/20">
+            Approved
+          </Badge>
+        </Button>
+      </div>
 
       <div className="fancy-card p-4 !translate-y-0 !shadow-card space-y-4">
         <div className="flex gap-2">
@@ -241,13 +269,76 @@ export default function CompanySearchPage() {
       ) : isError ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
-          title="Could not load talent"
+          title="Could not load data"
           description={
             error instanceof Error
               ? error.message
               : "Something went wrong. Please try again."
           }
         />
+      ) : searchMode === "projects" ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">
+              Showing Company Verified projects from RCA talents
+            </p>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {students.map((student) => {
+              const initials = student.fullName
+                ? student.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+                : "ST";
+
+              return (
+                <div
+                  key={student.userId}
+                  className="flex flex-col rounded-xl border bg-card p-5 shadow-sm justify-between gap-4"
+                >
+                  <div className="space-y-3">
+                    {/* Student Owner Info */}
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-sm">{student.fullName}</p>
+                          <p className="text-xs text-muted-foreground">Class of {student.cohortYear}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                        Verified
+                      </Badge>
+                    </div>
+
+                    {/* Bio & Skills */}
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {student.bio || "RCA Graduate"}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1">
+                      {student.skills.slice(0, 4).map((s) => (
+                        <span key={s} className="skill-pill text-[10px]">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <Button variant="default" size="sm" className="w-full rounded-full gap-1.5" asChild>
+                    <Link href={`/company/students/${student.userId}`}>
+                      View Student Profile
+                    </Link>
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       ) : students.length === 0 ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}

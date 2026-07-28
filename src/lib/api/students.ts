@@ -45,6 +45,7 @@ export interface CreateProjectData {
   techStack: string[];
   links?: Project["links"];
   images?: string[];
+  submitForReview?: boolean;
 }
 
 export const studentsApi = {
@@ -223,6 +224,7 @@ export const studentsApi = {
         ...data,
         links: data.links ?? {},
         images: data.images ?? [],
+        publishStatus: data.submitForReview ? "pending_review" : "private",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

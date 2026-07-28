@@ -96,7 +96,7 @@ export default function ForCompaniesPage() {
               icon: <Shield className="h-5 w-5" />,
               title: "Verified profiles only",
               description:
-                "Every student is reviewed by RCA admins before appearing in search results.",
+                "Every student is reviewed by RCA Talent admins before appearing in search results.",
             },
             {
               icon: <Filter className="h-5 w-5" />,

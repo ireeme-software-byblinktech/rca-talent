@@ -58,7 +58,7 @@ const strings = {
       step1Title: "Showcase your work",
       step1Desc: "Build your profile with projects, skills, and portfolio links.",
       step2Title: "Get verified",
-      step2Desc: "RCA admins review and approve student profiles for quality.",
+      step2Desc: "RCA Talent admins review and approve student profiles for quality.",
       step3Title: "Connect with employers",
       step3Desc: "Companies discover talent and send contact requests to connect.",
     },

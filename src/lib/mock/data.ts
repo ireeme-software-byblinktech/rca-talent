@@ -168,6 +168,7 @@ export const mockProjects: Project[] = [
     images: [
       "https://images.unsplash.com/photo-1625246333195-78aa78677764?w=800&q=80",
     ],
+    publishStatus: "approved",
     createdAt: "2024-07-01T00:00:00Z",
     updatedAt: "2024-07-01T00:00:00Z",
   },
@@ -182,6 +183,7 @@ export const mockProjects: Project[] = [
     images: [
       "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&q=80",
     ],
+    publishStatus: "approved",
     createdAt: "2024-07-15T00:00:00Z",
     updatedAt: "2024-07-15T00:00:00Z",
   },
@@ -195,6 +197,7 @@ export const mockProjects: Project[] = [
     images: [
       "https://images.unsplash.com/photo-1563013547-829f043a399a?w=800&q=80",
     ],
+    publishStatus: "approved",
     createdAt: "2024-07-10T00:00:00Z",
     updatedAt: "2024-07-10T00:00:00Z",
   },
