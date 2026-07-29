@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ProjectCoverUpload } from "@/components/shared/ProjectCoverUpload";
 import { studentsApi } from "@/lib/api/students";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/hooks/use-toast";
@@ -40,8 +41,6 @@ const projectSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   demo: optionalUrl,
   repo: optionalUrl,
-  // Optional — invalid values are cleared on submit instead of blocking create
-  coverImage: z.string().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -63,6 +62,9 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
   const [submitForReview, setSubmitForReview] = useState<boolean>(
     project ? project.publishStatus !== "private" && project.publishStatus !== "rejected" : false
   );
+  const [coverImage, setCoverImage] = useState<string | undefined>(
+    project?.images?.[0]
+  );
 
   const form = useForm<ProjectForm>({
     resolver: zodResolver(projectSchema),
@@ -72,14 +74,12 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           description: project.description,
           demo: project.links?.demo ?? "",
           repo: project.links?.repo ?? "",
-          coverImage: project.images?.[0] ?? "",
         }
       : {
           title: "",
           description: "",
           demo: "",
           repo: "",
-          coverImage: "",
         },
   });
 
@@ -151,16 +151,18 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
 
   const mutation = useMutation({
     mutationFn: (data: ProjectForm) => {
-      const cover = (data.coverImage ?? "").trim();
+      const cover = coverImage?.trim();
       const validCover =
         cover && isRenderableImageUrl(cover) ? cover : undefined;
 
       if (cover && !validCover) {
         toast({
-          title: "Cover image skipped",
+          variant: "destructive",
+          title: "Invalid cover image",
           description:
-            "Use a direct image link (ending in .jpg, .png, .webp) or leave it blank.",
+            "Use a direct image link or upload from your computer before saving.",
         });
+        throw new Error("Invalid cover image");
       }
 
       const payload = {
@@ -171,7 +173,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           demo: data.demo?.trim() || undefined,
           repo: data.repo?.trim() || undefined,
         },
-        images: validCover ? [validCover] : project?.images,
+        images: validCover ? [validCover] : [],
         submitForReview,
       };
       return project
@@ -231,17 +233,7 @@ export function ProjectFormDialog({ project, onClose, onSuccess }: ProjectFormDi
           <p className="text-xs text-destructive">{errors.description.message}</p>
         )}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="project-cover">Cover image URL (optional)</Label>
-        <Input
-          id="project-cover"
-          placeholder="https://…/image.jpg"
-          {...form.register("coverImage")}
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave blank if you don&apos;t have one. Must be a direct image link.
-        </p>
-      </div>
+      <ProjectCoverUpload value={coverImage} onChange={setCoverImage} />
       <div className="space-y-2">
         <Label>Tech stack</Label>
         <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-xl border border-border/50 bg-muted/20 p-3">

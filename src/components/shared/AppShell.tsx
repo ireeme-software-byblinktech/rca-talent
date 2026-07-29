@@ -46,6 +46,7 @@ import {
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/lib/auth/context";
 import { adminApi } from "@/lib/api/admin";
+import { adminProjectsApi } from "@/lib/api/adminProjects";
 import { messagesApi } from "@/lib/api/messages";
 import { supportApi } from "@/lib/api/support";
 import { RCALogo } from "@/components/shared/RCALogo";
@@ -57,6 +58,7 @@ type NavBadge =
   | "messages"
   | "pendingStudents"
   | "pendingCompanies"
+  | "pendingProjects"
   | "supportOpen"
   | "moderationPending";
 
@@ -345,6 +347,7 @@ const navByRole: Record<UserRole, NavEntry[]> = {
           href: "/admin/project-reviews",
           label: "Project Reviews",
           icon: <FolderKanban className="h-4 w-4" />,
+          badge: "pendingProjects",
         },
         {
           kind: "link",
@@ -457,6 +460,13 @@ export function AppShell({ children, role, title }: AppShellProps) {
     refetchInterval: 30000,
   });
 
+  const { data: pendingProjects = [] } = useQuery({
+    queryKey: ["admin-pending-projects"],
+    queryFn: () => adminProjectsApi.getPendingProjects(),
+    enabled: !!user && role === "admin",
+    refetchInterval: 30000,
+  });
+
   const unreadMessages = useMemo(
     () => conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     [conversations]
@@ -467,11 +477,12 @@ export function AppShell({ children, role, title }: AppShellProps) {
       messages: unreadMessages,
       pendingStudents: adminMetrics?.pendingStudents ?? 0,
       pendingCompanies: adminMetrics?.pendingCompanies ?? 0,
+      pendingProjects: pendingProjects.length,
       supportOpen: (supportStats?.open ?? 0) + (supportStats?.inProgress ?? 0),
       moderationPending: contentReports.filter((r) => r.status === "pending")
         .length,
     }),
-    [unreadMessages, adminMetrics, supportStats, contentReports]
+    [unreadMessages, adminMetrics, pendingProjects, supportStats, contentReports]
   );
 
   const getBadgeCount = (badge?: NavBadge) =>
