@@ -38,6 +38,18 @@ export const filesApi = {
     });
   },
 
+  async uploadProjectCover(file: File): Promise<UploadedFile> {
+    if (isMockMode()) {
+      return mockUpload(file, "projects/covers");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient<UploadedFile>("files/upload/project-cover", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
   async uploadBlogCover(file: File): Promise<UploadedFile> {
     if (isMockMode()) {
       return mockUpload(file, "blog/covers");

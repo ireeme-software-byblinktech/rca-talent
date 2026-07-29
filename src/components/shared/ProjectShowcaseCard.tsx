@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getProjectCover } from "@/components/shared/ProjectCard";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, shouldUnoptimizeImage } from "@/lib/utils";
 import type { Project } from "@/types";
 
 export type ProjectShowcaseOwner = {
@@ -91,6 +91,7 @@ export function ProjectShowcaseCard({
           fill
           className="object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          unoptimized={shouldUnoptimizeImage(cover)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand/80 via-brand/30 to-transparent" />
         <div className="absolute inset-0 bg-[url('/imigongo-pattern.svg')] opacity-[0.12] mix-blend-overlay" />
