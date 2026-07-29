@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate, isRenderableImageUrl } from "@/lib/utils";
+import { cn, formatDate, isRenderableImageUrl, shouldUnoptimizeImage } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/config/env";
 import type { Project } from "@/types";
 
 const FALLBACK_COVERS = [
@@ -22,7 +23,7 @@ const FALLBACK_COVERS = [
 ];
 
 export function getProjectCover(project: Project): string {
-  const candidate = project.images?.[0];
+  const candidate = resolveMediaUrl(project.images?.[0]);
   if (candidate && isRenderableImageUrl(candidate)) return candidate;
   const idx = project.title.charCodeAt(0) % FALLBACK_COVERS.length;
   return FALLBACK_COVERS[idx];
@@ -86,6 +87,7 @@ export function ProjectCard({
           fill
           className="object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          unoptimized={shouldUnoptimizeImage(cover)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand/80 via-brand/30 to-transparent" />
         <div className="absolute inset-0 bg-[url('/imigongo-pattern.svg')] opacity-[0.12] mix-blend-overlay" />

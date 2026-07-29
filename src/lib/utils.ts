@@ -53,10 +53,21 @@ export function orderByIds<T extends { id: string }>(items: T[], order: string[]
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
 const IMAGE_CDN_HOSTS = new Set(["images.unsplash.com"]);
+const IMAGE_HOST_SUFFIXES = [
+  "imgur.com",
+  "githubusercontent.com",
+  "cloudinary.com",
+  "pexels.com",
+  "jsdelivr.net",
+  "picsum.photos",
+  "placehold.co",
+  "googleusercontent.com",
+];
 
 /** True when a URL is safe to pass to next/image (direct image, not an app page). */
 export function isRenderableImageUrl(url: string | undefined | null): url is string {
   if (!url?.trim()) return false;
+  if (url.startsWith("blob:")) return true;
 
   try {
     const parsed = new URL(url);
@@ -71,12 +82,37 @@ export function isRenderableImageUrl(url: string | undefined | null): url is str
 
     if (IMAGE_CDN_HOSTS.has(parsed.hostname)) return true;
     if (IMAGE_EXTENSION_RE.test(parsed.pathname)) return true;
-    if (/\/(upload|uploads|files|storage|assets)\//i.test(parsed.pathname)) {
+    if (/\/(upload|uploads|files|storage|assets|projects)\//i.test(parsed.pathname)) {
+      return true;
+    }
+    if (
+      IMAGE_HOST_SUFFIXES.some(
+        (suffix) =>
+          parsed.hostname === suffix || parsed.hostname.endsWith(`.${suffix}`)
+      )
+    ) {
       return true;
     }
 
     return false;
   } catch {
     return false;
+  }
+}
+
+/** Use unoptimized next/image for hosts outside our configured remotePatterns. */
+export function shouldUnoptimizeImage(url: string): boolean {
+  if (url.startsWith("blob:")) return true;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "images.unsplash.com") return false;
+    if (parsed.hostname.endsWith(".onrender.com")) return false;
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
   }
 }
