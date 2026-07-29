@@ -688,7 +688,11 @@ export function mapProject(
         nestedLinks?.repo ??
         undefined,
     },
-    images: Array.isArray(raw.images) ? raw.images.map(String) : [],
+    images: Array.isArray(raw.images)
+      ? raw.images
+          .map((image) => resolveMediaUrl(String(image)))
+          .filter((image): image is string => Boolean(image))
+      : [],
     publishStatus: publishStatusMap[raw.publishStatus as string] ?? "private",
     rejectionReason: (raw.rejectionReason as string | undefined) ?? undefined,
     publishedAt: raw.publishedAt ? toIso(raw.publishedAt as string | Date) : undefined,
